@@ -1,7 +1,0 @@
-11:53:02 **** Clean-only build of configuration Debug for project cudaTest ****
-make clean 
-rm -rf  ./src/cudaTest.d  ./src/cudaTest.o  cudaTest
- 
-
-11:53:02 Build Finished (took 61ms)
-
