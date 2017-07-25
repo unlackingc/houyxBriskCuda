@@ -2,14 +2,11 @@
 #include <numeric>
 #include <stdlib.h>
 #include<stdio.h>
+#include <assert.h>
+
 #include "cuda_types.hpp"
 #include "mask.hpp"
-
-
-#if !defined(uchar)
-#define uchar unsigned char
-#endif
-
+#include "FastCuda.h"
 
 
 __device__ unsigned int g_counter = 0;
@@ -185,7 +182,7 @@ __device__ int cornerScore(const uint C[4], const int v, const int threshold)
     return min - 1;
 }
 
-template <bool calcScore, class Mask>
+template <bool calcScore, class Mask>//todo: fix
 __global__ void calcKeypoints(const PtrStepSzb img, const Mask mask, short2* kpLoc, const unsigned int maxKeypoints, PtrStepi score, const int threshold)
 {
     #if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ >= 110)
@@ -247,7 +244,7 @@ __global__ void calcKeypoints(const PtrStepSzb img, const Mask mask, short2* kpL
     #endif
 }
 
-int calcKeypoints_gpu(PtrStepSzb img, PtrStepSzb mask, short2* kpLoc, int maxKeypoints, PtrStepSzi score, int threshold, cudaStream_t stream)
+__inline__ int calcKeypoints_gpu(PtrStepSzb img, PtrStepSzb mask, short2* kpLoc, int maxKeypoints, PtrStepSzi score, int threshold, cudaStream_t stream)
 {
     void* counter_ptr;
     cudaGetSymbolAddress(&counter_ptr, g_counter) ;//todo: cudaSafeCall
@@ -283,6 +280,16 @@ int calcKeypoints_gpu(PtrStepSzb img, PtrStepSzb mask, short2* kpLoc, int maxKey
     cudaStreamSynchronize(stream) ;//todo: cudaSafeCall
 
     return count;
+}
+
+int InterfaceGetKeyPoints( int rows, int cols, int steps, uchar* image, short2* keyPoints, int* scores, int threshold, int maxPoints )
+{
+	PtrStepSzb image_( rows, cols, image, steps);
+	PtrStepSzb mask( rows, cols, NULL, cols);
+	PtrStepSzi scores_( rows, cols, scores, cols);
+	//Stream& stream = Stream::Null();
+	return calcKeypoints_gpu(image_, mask, keyPoints, maxPoints, scores_, threshold, NULL );
+	//nt count = calcKeypoints_gpu(img, mask, kpLoc.ptr<short2>(), max_npoints_, score, threshold_, StreamAccessor::getStream(stream));
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -324,7 +331,7 @@ __global__ void nonmaxSuppression(const short2* kpLoc, int count, const PtrStepS
     #endif
 }
 
-int nonmaxSuppression_gpu(const short2* kpLoc, int count, PtrStepSzi score, short2* loc, float* response, cudaStream_t stream)
+__inline__ int nonmaxSuppression_gpu(const short2* kpLoc, int count, PtrStepSzi score, short2* loc, float* response, cudaStream_t stream)
 {
     void* counter_ptr;
     cudaGetSymbolAddress(&counter_ptr, g_counter) ;//todo: cudaSafeCall
@@ -347,8 +354,51 @@ int nonmaxSuppression_gpu(const short2* kpLoc, int count, PtrStepSzi score, shor
     return new_count;
 }
 
-int main()
+
+int interfaceNoMaxSup(int rows, int cols, int steps, const short2* keypoints, int count, int* scores, short2* loc, float* response)
 {
-	printf("hello sucking world!");
-	return 0;
+	PtrStepSzi scores_( rows, cols, scores, cols);
+	return nonmaxSuppression_gpu(keypoints, count, scores_, loc, response, NULL);
+}
+
+
+int detect(int rows, int cols, uchar* image, short2* keyPoints, int* scores, int threshold, int maxPoints, short2* loc, float* response, bool ifNoMaxSup)
+{
+    assert(rows == 480 && cols == 640);
+
+    //BufferPool pool(stream);
+
+/*    GpuMat score;
+    if (nonmaxSuppression_)
+    {
+        score = pool.getBuffer(img.size(), CV_32SC1);
+        score.setTo(Scalar::all(0), stream);
+    }
+    */
+
+    int count = InterfaceGetKeyPoints( rows, cols, cols, image, keyPoints, scores, threshold, maxPoints );
+    //int count = calcKeypoints_gpu(img, mask, kpLoc.ptr<short2>(), max_npoints_, score, threshold_, StreamAccessor::getStream(stream));
+    count = std::min(count, maxPoints);
+
+    if (count == 0)
+    {
+        printf("No keyPoints, something wrong!!");
+        exit(1);
+    }
+
+    //ensureSizeIsEnough(ROWS_COUNT, count, CV_32FC1, _keypoints);
+    //GpuMat& keypoints = _keypoints.getGpuMatRef();
+
+    if (ifNoMaxSup)
+    {
+    	//interfaceNoMaxSup(int rows, int cols, int steps, const short2* keypoints, int count, int* scores, short2* loc, float* response)
+        count = interfaceNoMaxSup(rows,cols,cols,keyPoints, count, scores, loc, response);
+        if (count == 0)
+        {
+            printf("No keyPoints, something wrong!!");
+            exit(1);
+        }
+    }
+
+    return count;
 }

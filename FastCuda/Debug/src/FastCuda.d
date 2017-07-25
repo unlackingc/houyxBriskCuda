@@ -185,4 +185,5 @@ src/FastCuda.o : ../src/FastCuda.cu \
     /usr/include/c++/5/numeric \
     /usr/include/c++/5/bits/stl_numeric.h \
     ../src/cuda_types.hpp \
-    ../src/mask.hpp
+    ../src/mask.hpp \
+    ../src/FastCuda.h

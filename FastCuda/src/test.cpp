@@ -1,3 +1,9 @@
+/*
+ * test.cpp
+ *
+ *  Created on: 2017年7月25日
+ *      Author: houyx
+ */
 #include <iostream>
 #include "opencv2/cudafeatures2d.hpp"
 #include <opencv2/features2d/features2d.hpp>
@@ -34,6 +40,7 @@ GpuMat loadMat(const Mat& m, bool useRoi = false)
     return d_m;
 }
 
+//todo: 传递data等必要数据，调用detect.
 int main()
 {
 	Mat testImg = imread( "data/test1.jpg" );
@@ -76,3 +83,5 @@ int main()
 
 	return 0;
 }
+
+
