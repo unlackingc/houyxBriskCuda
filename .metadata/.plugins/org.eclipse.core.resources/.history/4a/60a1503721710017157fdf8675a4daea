@@ -1,0 +1,72 @@
+#include <iostream>
+#include "opencv2/cudafeatures2d.hpp"
+#include <opencv2/features2d/features2d.hpp>
+#include <opencv/cv.h>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/core/core.hpp>
+
+using namespace std;
+using namespace cv;
+using namespace cv::cuda;
+
+GpuMat createMat(Size size, int type, bool useRoi = false)
+{
+    Size size0 = size;
+
+/*    if (useRoi)//todo: parse more
+    {
+        size0.width += randomInt(5, 15);
+        size0.height += randomInt(5, 15);
+    }*/
+
+    GpuMat d_m(size0, type);
+
+    if (size0 != size)
+        d_m = d_m(Rect((size0.width - size.width) / 2, (size0.height - size.height) / 2, size.width, size.height));
+
+    return d_m;
+}
+
+GpuMat loadMat(const Mat& m, bool useRoi = false)
+{
+    GpuMat d_m = createMat(m.size(), m.type(), useRoi);
+    d_m.upload(m);
+    return d_m;
+}
+
+int main()
+{
+	Mat testImg = imread( "data/test.jpg" );
+	Mat testImgGray;
+	cv::cvtColor(testImg, testImgGray, CV_BGR2GRAY);
+	if( !testImg.data )
+	{
+		cout <<"load data failed" <<endl;
+	}
+
+	imshow("test", testImgGray);
+	//waitKey();
+
+
+	Ptr<cv::cuda::FastFeatureDetector> fastDetector_;
+	fastDetector_ = cuda::FastFeatureDetector::create();
+
+	GpuMat fastKpRange;
+	fastDetector_->detectAsync(loadMat(testImgGray), fastKpRange);
+
+    int drawmode = DrawMatchesFlags::DRAW_RICH_KEYPOINTS;
+    Mat result;
+    vector<KeyPoint> KpRange;
+    fastDetector_->convert(fastKpRange, KpRange);
+    drawKeypoints(testImg, fastKpRange, result, Scalar::all(-1), drawmode);
+    cout<<"size of description of Img: "<<fastKpRange.size()<<endl;
+
+	imshow("result", result);
+	waitKey();
+
+
+
+	cout << "starting" << endl;
+
+	return 0;
+}

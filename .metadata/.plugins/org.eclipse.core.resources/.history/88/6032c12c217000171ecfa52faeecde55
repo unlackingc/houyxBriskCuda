@@ -1,0 +1,10 @@
+#include <iostream>
+#include "opencv2/cudafeatures2d.hpp"
+
+using namespace std;
+
+int main()
+{
+	cout << "hello world" << endl;
+	return 0;
+}

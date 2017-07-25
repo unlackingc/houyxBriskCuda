@@ -1,0 +1,45 @@
+CONTENT_ASSIST_FOREGROUND_COLOR=30,100,255
+ColorsAndFontsPreferencePage.expandedCategories=Torg.eclipse.ui.workbenchMisc
+ColorsAndFontsPreferencePage.selectedElement=CQUALIFIER_COLOR
+ENABLED_DECORATORS=com.nvidia.cuda.ide.decorator\:true,org.eclipse.cdt.ui.indexedFiles\:false,org.eclipse.cdt.managedbuilder.ui.excludedFile\:true,org.eclipse.cdt.managedbuilder.ui.includeFolder\:true,org.eclipse.cdt.internal.ui.CustomBuildSettingsDecorator\:true,org.eclipse.egit.ui.internal.decorators.GitLightweightDecorator\:true,org.eclipse.ptp.rdt.sync.ui.decorator\:true,org.eclipse.rse.core.virtualobject.decorator\:true,org.eclipse.rse.core.binary.executable.decorator\:true,org.eclipse.rse.core.script.executable.decorator\:true,org.eclipse.rse.core.java.executable.decorator\:true,org.eclipse.rse.core.library.decorator\:true,org.eclipse.rse.core.link.decorator\:true,org.eclipse.rse.subsystems.error.decorator\:true,org.eclipse.team.cvs.ui.decorator\:false,org.eclipse.ui.LinkedResourceDecorator\:true,org.eclipse.ui.SymlinkDecorator\:true,org.eclipse.ui.VirtualResourceDecorator\:true,org.eclipse.ui.ContentTypeDecorator\:true,org.eclipse.ui.ResourceFilterDecorator\:false,
+QUALIFIER_COLOR=0,0,0
+eclipse.preferences.version=1
+editors=<?xml version\="1.0" encoding\="UTF-8"?>\n<editors>\n<descriptor id\="org.eclipse.ui.browser.editorSupport" image\="$nl$/icons/obj16/internal_browser.gif" internal\="false" label\="Web Browser" launcher\="org.eclipse.ui.internal.browser.BrowserLauncher" openMode\="4" open_in_place\="false" plugin\="org.eclipse.ui.browser"/>\n<descriptor class\="com.nvidia.viper.ui.SessionEditor" id\="com.nvidia.viper.sessioneditor" image\="icons/en/session.png" internal\="true" label\="Session" openMode\="1" open_in_place\="false" plugin\="com.nvidia.viper"/>\n<descriptor class\="com.nvidia.cuda.ide.samples.CudaSampleEditorPart" id\="com.nvidia.cuda.ide.sampleimportlauncher" image\="icons/elcl16/nsight.png" internal\="true" label\="CUDA Sample Importer" openMode\="1" open_in_place\="false" plugin\="com.nvidia.cuda.ide.build"/>\n</editors>
+org.eclipse.cdt.ui.editors.textfont=1|Monospace|12.0|0|GTK|1|;
+org.eclipse.e4.ui.css.theme.e4_dark.org.eclipse.ui.workbench.ACTIVE_NOFOCUS_TAB_BG_END=41,41,41
+org.eclipse.e4.ui.css.theme.e4_dark.org.eclipse.ui.workbench.ACTIVE_NOFOCUS_TAB_BG_START=43,44,45
+org.eclipse.e4.ui.css.theme.e4_dark.org.eclipse.ui.workbench.ACTIVE_NOFOCUS_TAB_SELECTED_TEXT_COLOR=204,204,204
+org.eclipse.e4.ui.css.theme.e4_dark.org.eclipse.ui.workbench.ACTIVE_TAB_BG_END=41,41,41
+org.eclipse.e4.ui.css.theme.e4_dark.org.eclipse.ui.workbench.ACTIVE_TAB_BG_START=43,44,45
+org.eclipse.e4.ui.css.theme.e4_dark.org.eclipse.ui.workbench.ACTIVE_TAB_INNER_KEYLINE_COLOR=75,76,79
+org.eclipse.e4.ui.css.theme.e4_dark.org.eclipse.ui.workbench.ACTIVE_TAB_OUTER_KEYLINE_COLOR=75,76,79
+org.eclipse.e4.ui.css.theme.e4_dark.org.eclipse.ui.workbench.ACTIVE_TAB_OUTLINE_COLOR=72,72,72
+org.eclipse.e4.ui.css.theme.e4_dark.org.eclipse.ui.workbench.ACTIVE_TAB_SELECTED_TEXT_COLOR=247,248,248
+org.eclipse.e4.ui.css.theme.e4_dark.org.eclipse.ui.workbench.ACTIVE_TAB_UNSELECTED_TEXT_COLOR=221,221,221
+org.eclipse.e4.ui.css.theme.e4_dark.org.eclipse.ui.workbench.ACTIVE_UNSELECTED_TABS_COLOR_END=64,64,67
+org.eclipse.e4.ui.css.theme.e4_dark.org.eclipse.ui.workbench.ACTIVE_UNSELECTED_TABS_COLOR_START=73,74,77
+org.eclipse.e4.ui.css.theme.e4_dark.org.eclipse.ui.workbench.INACTIVE_TAB_BG_END=49,53,56
+org.eclipse.e4.ui.css.theme.e4_dark.org.eclipse.ui.workbench.INACTIVE_TAB_BG_START=59,64,66
+org.eclipse.e4.ui.css.theme.e4_dark.org.eclipse.ui.workbench.INACTIVE_TAB_INNER_KEYLINE_COLOR=81,86,88
+org.eclipse.e4.ui.css.theme.e4_dark.org.eclipse.ui.workbench.INACTIVE_TAB_OUTER_KEYLINE_COLOR=81,86,88
+org.eclipse.e4.ui.css.theme.e4_dark.org.eclipse.ui.workbench.INACTIVE_TAB_OUTLINE_COLOR=59,64,66
+org.eclipse.e4.ui.css.theme.e4_dark.org.eclipse.ui.workbench.INACTIVE_TAB_SELECTED_TEXT_COLOR=255,255,255
+org.eclipse.e4.ui.css.theme.e4_dark.org.eclipse.ui.workbench.INACTIVE_TAB_UNSELECTED_TEXT_COLOR=187,187,187
+org.eclipse.e4.ui.css.theme.e4_dark.org.eclipse.ui.workbench.INACTIVE_UNSELECTED_TABS_COLOR_END=70,70,73
+org.eclipse.e4.ui.css.theme.e4_dark.org.eclipse.ui.workbench.INACTIVE_UNSELECTED_TABS_COLOR_START=81,86,88
+org.eclipse.egit.ui.DiffAddBackgroundColor=11,121,90
+org.eclipse.egit.ui.DiffAddForegroundColor=216,254,245
+org.eclipse.egit.ui.DiffHeadlineBackgroundColor=71,71,71
+org.eclipse.egit.ui.DiffHeadlineForegroundColor=242,242,242
+org.eclipse.egit.ui.DiffHunkBackgroundColor=53,97,113
+org.eclipse.egit.ui.DiffHunkForegroundColor=233,242,254
+org.eclipse.egit.ui.DiffRemoveBackgroundColor=117,2,36
+org.eclipse.egit.ui.DiffRemoveForegroundColor=255,232,237
+org.eclipse.egit.ui.IgnoredResourceBackgroundColor=42,42,42
+org.eclipse.egit.ui.IgnoredResourceForegroundColor=120,120,120
+org.eclipse.egit.ui.UncommittedChangeBackgroundColor=42,42,42
+org.eclipse.egit.ui.UncommittedChangeForegroundColor=114,157,186
+org.eclipse.search.ui.match.highlight=0,0,0
+org.eclipse.ui.commands=<?xml version\="1.0" encoding\="UTF-8"?>\n<org.eclipse.ui.commands>\n<keyBinding commandId\="org.eclipse.ui.edit.text.contentAssist.proposals" contextId\="org.eclipse.ui.contexts.dialogAndWindow" keyConfigurationId\="com.nvidia.cuda.ide" keySequence\="SHIFT+SPACE"/>\n<keyBinding contextId\="org.eclipse.ui.contexts.dialogAndWindow" keyConfigurationId\="org.eclipse.ui.defaultAcceleratorConfiguration" keySequence\="ALT+/"/>\n</org.eclipse.ui.commands>
+overriddenByCSS=,org.eclipse.egit.ui.DiffAddBackgroundColor,org.eclipse.egit.ui.DiffAddForegroundColor,org.eclipse.egit.ui.DiffHeadlineBackgroundColor,org.eclipse.egit.ui.DiffHeadlineForegroundColor,org.eclipse.egit.ui.DiffHunkBackgroundColor,org.eclipse.egit.ui.DiffHunkForegroundColor,org.eclipse.egit.ui.DiffRemoveBackgroundColor,org.eclipse.egit.ui.DiffRemoveForegroundColor,org.eclipse.egit.ui.IgnoredResourceBackgroundColor,org.eclipse.egit.ui.IgnoredResourceForegroundColor,org.eclipse.egit.ui.UncommittedChangeBackgroundColor,org.eclipse.egit.ui.UncommittedChangeForegroundColor,
+resourcetypes=<?xml version\="1.0" encoding\="UTF-8"?>\n<editors version\="3.1">\n<info extension\="html" name\="*">\n<editor id\="org.eclipse.ui.browser.editorSupport"/>\n</info>\n<info extension\="htm" name\="*">\n<editor id\="org.eclipse.ui.browser.editorSupport"/>\n</info>\n<info extension\="nvvp" name\="*">\n<editor id\="com.nvidia.viper.sessioneditor"/>\n</info>\n<info extension\="xml" name\="nsight">\n<editor id\="com.nvidia.cuda.ide.sampleimportlauncher"/>\n</info>\n<info extension\="xml" name\="info">\n<editor id\="com.nvidia.cuda.ide.sampleimportlauncher"/>\n</info>\n<info extension\="shtml" name\="*">\n<editor id\="org.eclipse.ui.browser.editorSupport"/>\n</info>\n</editors>

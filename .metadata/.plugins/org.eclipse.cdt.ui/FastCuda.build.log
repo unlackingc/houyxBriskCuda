@@ -1,0 +1,16 @@
+16:42:11 **** Incremental Build of configuration Debug for project FastCuda ****
+make all 
+Building file: ../src/FastCuda.cu
+Invoking: NVCC Compiler
+/usr/local/cuda-8.0/bin/nvcc -G -g -O0 -gencode arch=compute_50,code=sm_50  -odir "src" -M -o "src/FastCuda.d" "../src/FastCuda.cu"
+/usr/local/cuda-8.0/bin/nvcc -G -g -O0 --compile --relocatable-device-code=false -gencode arch=compute_50,code=compute_50 -gencode arch=compute_50,code=sm_50  -x cu -o  "src/FastCuda.o" "../src/FastCuda.cu"
+Finished building: ../src/FastCuda.cu
+ 
+Building target: FastCuda
+Invoking: NVCC Linker
+/usr/local/cuda-8.0/bin/nvcc --cudart static --relocatable-device-code=false -gencode arch=compute_50,code=compute_50 -gencode arch=compute_50,code=sm_50 -link -o  "FastCuda"  ./src/FastCuda.o   
+Finished building target: FastCuda
+ 
+
+16:42:13 Build Finished (took 1s.422ms)
+

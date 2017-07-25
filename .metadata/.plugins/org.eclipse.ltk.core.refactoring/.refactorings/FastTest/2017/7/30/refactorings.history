@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">
+<refactoring comment="Rename resource &apos;FastTest/data/b3b7d0a20cf431ad17c8fa1f4136acaf2edd98fa.jpg&apos; to &apos;test.jpg&apos;" description="Rename resource &apos;b3b7d0a20cf431ad17c8fa1f4136acaf2edd98fa.jpg&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="data/b3b7d0a20cf431ad17c8fa1f4136acaf2edd98fa.jpg" name="test.jpg" stamp="1500868087822" updateReferences="true"/>
+</session>

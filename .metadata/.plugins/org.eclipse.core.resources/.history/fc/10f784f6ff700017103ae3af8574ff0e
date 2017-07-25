@@ -1,0 +1,43 @@
+#include <iostream>
+#include "opencv2/cudafeatures2d.hpp"
+#include <opencv/cv.h>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/core/core.hpp>
+
+using namespace std;
+using namespace cv;
+using namespace cv::cuda;
+
+int main()
+{
+	Mat testImg = imread( "data/test.jpg" );
+	Mat testImgGray;
+	cv::cvtColor(testImg, testImgGray, CV_BGR2GRAY);
+	if( !testImg.data )
+	{
+		cout <<"load data failed" <<endl;
+	}
+
+	imshow("test", testImgGray);
+	waitKey();
+
+
+	Ptr<cv::cuda::FastFeatureDetector> fastDetector_;
+	fastDetector_ = cuda::FastFeatureDetector::create();
+
+	GpuMat fastKpRange;
+	InputArray mask;
+	fastDetector_->detectAsync(testImgGray, fastKpRange);
+
+    int drawmode = DrawMatchesFlags::DRAW_RICH_KEYPOINTS;
+    Mat result;
+    drawKeypoints(testImg, fastKpRange, res1, Scalar::all(-1), drawmode);//画出特征点
+    cout<<"size of description of Img1: "<<kp1.size()<<endl;
+    cout<<"size of description of Img2: "<<kp2.size()<<endl;
+
+
+
+	cout << "starting" << endl;
+
+	return 0;
+}
