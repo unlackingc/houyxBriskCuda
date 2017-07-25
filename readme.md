@@ -1,10 +1,3 @@
----
-title: brisk算法cuda移植 
-tags: 新建,模板,小书匠
-grammar_cjkRuby: true
----
-
-[toc]
 # 工程文件夹说明
 **本项目包含了若干工程，包括不同的测试工程**
 - cudaTest：没有卵用
