@@ -4,9 +4,9 @@
 #include <assert.h>
 
 #include "FastCuda.h"
+#include "cuda_types.hpp"
+
 using namespace std;
-using namespace cv;
-using namespace cv::cuda;
 
 
 __device__ unsigned int g_counter = 0;
@@ -14,7 +14,7 @@ __device__ unsigned int g_counter = 0;
 ///////////////////////////////////////////////////////////////////////////
 // calcKeypoints
 //
-//__constant__ uchar c_table[] = {0x80, 0x0, 0x0, 0x0};//todo: fix table
+//__constant__ unsigned char c_table[] = {0x80, 0x0, 0x0, 0x0};//todo: fix table
 
 __host__ __device__ __forceinline__ int divUp(int total, int grain)
 {
@@ -282,7 +282,7 @@ __inline__ int calcKeypoints_gpu(PtrStepSzb img, PtrStepSzb mask, short2* kpLoc,
     return count;
 }
 
-int InterfaceGetKeyPoints( int rows, int cols, int steps, uchar* image, short2* keyPoints, int* scores, int threshold, int maxPoints )
+int InterfaceGetKeyPoints( int rows, int cols, int steps, unsigned char* image, short2* keyPoints, int* scores, int threshold, int maxPoints )
 {
 	PtrStepSzb image_( rows, cols, image, steps);
 	PtrStepSzb mask( rows, cols, NULL, steps);
@@ -363,7 +363,7 @@ int interfaceNoMaxSup(int rows, int cols, int steps, const short2* keypoints, in
 }
 
 
-int detectMe(int rows, int cols, int step, uchar* image, short2* keyPoints, int* scores, short2* loc, float* response,int threshold, int maxPoints,  bool ifNoMaxSup)
+int detectMe(int rows, int cols, int step, unsigned char* image, short2* keyPoints, int* scores, short2* loc, float* response,int threshold, int maxPoints,  bool ifNoMaxSup)
 {
 
 
@@ -404,25 +404,31 @@ int detectMe(int rows, int cols, int step, uchar* image, short2* keyPoints, int*
             exit(1);
         }
     }
+    else
+    {
+
+    }
+
+
     printf("count after noMax: %d\n", count );
     return count;
 }
 
 
-#define idx(i,j) (j*cols + i)
-void checkContentWithGpuIn( uchar* dcpu, uchar* dgpu, int rows, int cols)
+/*#define idx(i,j) (j*cols + i)
+void checkContentWithGpuIn( unsigned char* dcpu, unsigned char* dgpu, int rows, int cols)
 {
 	ofstream dout("debug1.txt");
-	uchar* temp;
-	temp = new uchar[rows*cols];
-	cudaMemcpy(temp, dgpu, sizeof(uchar)*rows*cols, cudaMemcpyDeviceToHost) ;
+	unsigned char* temp;
+	temp = new unsigned char[rows*cols];
+	cudaMemcpy(temp, dgpu, sizeof(unsigned char)*rows*cols, cudaMemcpyDeviceToHost) ;
 
 	int temp1,temp2;
 	for( int i = 0; i < cols; i ++ )
 	{
 		for( int j = 0; j < rows; j ++)
 		{
-			temp1 = (uchar)(dcpu[idx(i,j)]), temp2 = (uchar)(temp[idx(i,j)]);
+			temp1 = (unsigned char)(dcpu[idx(i,j)]), temp2 = (unsigned char)(temp[idx(i,j)]);
 			//cout << hex << dcpu[idx(i,j)] << " ->G:-> " << temp[idx(i,j)] << endl;
 			if( i%640 ==1)
 			cout << temp1 << " ::1: " << temp2 << endl;
@@ -430,8 +436,9 @@ void checkContentWithGpuIn( uchar* dcpu, uchar* dgpu, int rows, int cols)
 		}
 	}
 	dout.close();
-}
+}*/
 
+/*
 int detectMe1(cv::InputArray imageCpu, int rows, int cols, PtrStepSzb image, short2* keyPoints, PtrStepSzi scores, short2* loc, float* response,int threshold, int maxPoints,  bool ifNoMaxSup)
 {
 	cv::Mat temp = imageCpu.getMat();
@@ -440,13 +447,13 @@ int detectMe1(cv::InputArray imageCpu, int rows, int cols, PtrStepSzb image, sho
 
     //BufferPool pool(stream);
 
-/*    GpuMat score;
+    GpuMat score;
     if (nonmaxSuppression_)
     {
         score = pool.getBuffer(img.size(), CV_32SC1);
         score.setTo(Scalar::all(0), stream);
     }
-    */
+
     PtrStepSzb mask( rows, cols, NULL, cols);
 
     int count = calcKeypoints_gpu(image, mask, keyPoints, maxPoints, scores, threshold, NULL );
@@ -477,3 +484,4 @@ int detectMe1(cv::InputArray imageCpu, int rows, int cols, PtrStepSzb image, sho
     printf("m1 count after noMax: %d\n", count );
     return count;
 }
+*/

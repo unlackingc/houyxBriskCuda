@@ -4,9 +4,29 @@
 - FastTest： 对==cv::cuda::FastFeatureDetector==的测试
 - FastCuda：  对==cv::cuda::FastFeatureDetector==的提取
 - briskCuda： 尚未建立
+
+# FastCuda
+Api
+
+``` cpp
+int detectMe(int rows, int cols, int step, unsigned char* image, short2* keyPoints, int* scores, short2* loc, float* response,int threshold=10, int maxPoints=5000, bool ifNoMaxSup = true);
+
+rows: 行数
+cols: 列数
+step: 参见opencvGpuMat定义，如果数组连续，step=cols
+image: 4深度灰度图像数组
+keyPoints: 不做noMaxsup时的KeyPoint坐标
+scores: 不做noMaxsup时的KeyPoint Score,存放在对应的（i,j）上
+loc: 做noMaxsup时的KeyPoint坐标
+response： 做noMaxsup时的KeyPoint Score，index和loc相同
+```
+
+
 # 使用IDE
 1. 我使用的是英伟达自带的Nsight eclipse edition
 2. 理论上直接在debug或release文件夹下make也是可以编译的
+
+
 
 
 ===============

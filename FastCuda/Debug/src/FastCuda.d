@@ -121,7 +121,6 @@ src/FastCuda.o : ../src/FastCuda.cu \
     /usr/include/c++/5/debug/debug.h \
     /usr/include/c++/5/bits/move.h \
     ../src/FastCuda.h \
-    ../src/cuda_types.hpp \
     ../src/mask.hpp \
     /usr/include/c++/5/iostream \
     /usr/include/c++/5/ostream \
@@ -187,86 +186,10 @@ src/FastCuda.o : ../src/FastCuda.cu \
     /usr/include/c++/5/bits/ostream.tcc \
     /usr/include/c++/5/istream \
     /usr/include/c++/5/bits/istream.tcc \
-    /usr/local/include/opencv2/cudafeatures2d.hpp \
-    /usr/local/include/opencv2/core/cuda.hpp \
-    /usr/local/include/opencv2/core.hpp \
-    /usr/local/include/opencv2/core/cvdef.h \
-    /usr/local/include/opencv2/core/hal/interface.h \
-    /usr/include/c++/5/cstddef \
-    /usr/lib/gcc/x86_64-linux-gnu/5/include/stdint.h \
-    /usr/include/stdint.h \
-    /usr/local/include/opencv2/core/version.hpp \
-    /usr/local/include/opencv2/core/base.hpp \
-    /usr/local/include/opencv2/opencv_modules.hpp \
-    /usr/include/c++/5/climits \
-    /usr/include/c++/5/algorithm \
-    /usr/include/c++/5/utility \
-    /usr/include/c++/5/bits/stl_relops.h \
-    /usr/include/c++/5/bits/stl_algo.h \
-    /usr/include/c++/5/bits/algorithmfwd.h \
-    /usr/include/c++/5/bits/stl_heap.h \
-    /usr/include/c++/5/bits/stl_tempbuf.h \
-    /usr/include/c++/5/bits/stl_construct.h \
-    /usr/local/include/opencv2/core/cvstd.hpp \
-    /usr/include/c++/5/cstring \
-    /usr/local/include/opencv2/core/ptr.inl.hpp \
-    /usr/local/include/opencv2/core/neon_utils.hpp \
-    /usr/local/include/opencv2/core/traits.hpp \
-    /usr/local/include/opencv2/core/matx.hpp \
-    /usr/local/include/opencv2/core/saturate.hpp \
-    /usr/local/include/opencv2/core/fast_math.hpp \
-    /usr/local/include/opencv2/core/types.hpp \
-    /usr/include/c++/5/cfloat \
-    /usr/lib/gcc/x86_64-linux-gnu/5/include/float.h \
-    /usr/include/c++/5/vector \
-    /usr/include/c++/5/bits/stl_uninitialized.h \
-    /usr/include/c++/5/bits/stl_vector.h \
-    /usr/include/c++/5/bits/stl_bvector.h \
-    /usr/include/c++/5/bits/vector.tcc \
-    /usr/include/c++/5/limits \
-    /usr/local/include/opencv2/core/mat.hpp \
-    /usr/local/include/opencv2/core/bufferpool.hpp \
-    /usr/local/include/opencv2/core/mat.inl.hpp \
-    /usr/local/include/opencv2/core/persistence.hpp \
-    /usr/local/include/opencv2/core/operations.hpp \
-    /usr/include/c++/5/cstdio \
-    /usr/local/include/opencv2/core/cvstd.inl.hpp \
-    /usr/include/c++/5/complex \
-    /usr/include/c++/5/sstream \
-    /usr/include/c++/5/bits/sstream.tcc \
-    /usr/local/include/opencv2/core/utility.hpp \
-    /usr/local/include/opencv2/core/core_c.h \
-    /usr/local/include/opencv2/core/types_c.h \
-    /usr/local/include/opencv2/core/optim.hpp \
-    /usr/local/include/opencv2/core/ovx.hpp \
-    /usr/local/include/opencv2/core/cuda_types.hpp \
-    /usr/local/include/opencv2/core/cuda.inl.hpp \
-    /usr/local/include/opencv2/features2d.hpp \
-    /usr/local/include/opencv2/flann/miniflann.hpp \
-    /usr/local/include/opencv2/flann/defines.h \
-    /usr/local/include/opencv2/flann/config.h \
-    /usr/local/include/opencv2/cudafilters.hpp \
-    /usr/local/include/opencv2/imgproc.hpp \
-    /usr/local/include/opencv2/imgproc/imgproc_c.h \
-    /usr/local/include/opencv2/imgproc/types_c.h \
-    /usr/local/include/opencv2/features2d/features2d.hpp \
-    /usr/local/include/opencv/cv.h \
-    /usr/local/include/opencv2/photo/photo_c.h \
-    /usr/local/include/opencv2/video/tracking_c.h \
-    /usr/local/include/opencv2/objdetect/objdetect_c.h \
-    /usr/include/c++/5/deque \
-    /usr/include/c++/5/bits/stl_deque.h \
-    /usr/include/c++/5/bits/deque.tcc \
-    /usr/local/include/opencv2/highgui/highgui.hpp \
-    /usr/local/include/opencv2/highgui.hpp \
-    /usr/local/include/opencv2/imgcodecs.hpp \
-    /usr/local/include/opencv2/videoio.hpp \
-    /usr/local/include/opencv2/highgui/highgui_c.h \
-    /usr/local/include/opencv2/imgcodecs/imgcodecs_c.h \
-    /usr/local/include/opencv2/videoio/videoio_c.h \
-    /usr/local/include/opencv2/core/core.hpp \
+    ../src/cuda_types.hpp \
     /usr/include/c++/5/fstream \
     /usr/include/c++/5/bits/codecvt.h \
+    /usr/include/c++/5/cstdio \
     /usr/include/x86_64-linux-gnu/c++/5/bits/basic_file.h \
     /usr/include/x86_64-linux-gnu/c++/5/bits/c++io.h \
     /usr/include/c++/5/bits/fstream.tcc

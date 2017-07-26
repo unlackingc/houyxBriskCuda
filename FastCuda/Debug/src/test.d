@@ -115,7 +115,6 @@ src/test.o : ../src/test.cu \
     /usr/local/cuda-8.0/bin/..//include/surface_indirect_functions.h \
     /usr/local/cuda-8.0/bin/..//include/device_launch_parameters.h \
     ../src/FastCuda.h \
-    ../src/cuda_types.hpp \
     ../src/mask.hpp \
     /usr/include/c++/5/iostream \
     /usr/include/c++/5/ostream \
@@ -185,6 +184,13 @@ src/test.o : ../src/test.cu \
     /usr/include/c++/5/bits/ostream.tcc \
     /usr/include/c++/5/istream \
     /usr/include/c++/5/bits/istream.tcc \
+    ../src/cuda_types.hpp \
+    /usr/include/c++/5/fstream \
+    /usr/include/c++/5/bits/codecvt.h \
+    /usr/include/c++/5/cstdio \
+    /usr/include/x86_64-linux-gnu/c++/5/bits/basic_file.h \
+    /usr/include/x86_64-linux-gnu/c++/5/bits/c++io.h \
+    /usr/include/c++/5/bits/fstream.tcc \
     /usr/local/include/opencv2/cudafeatures2d.hpp \
     /usr/local/include/opencv2/core/cuda.hpp \
     /usr/local/include/opencv2/core.hpp \
@@ -227,7 +233,6 @@ src/test.o : ../src/test.cu \
     /usr/local/include/opencv2/core/mat.inl.hpp \
     /usr/local/include/opencv2/core/persistence.hpp \
     /usr/local/include/opencv2/core/operations.hpp \
-    /usr/include/c++/5/cstdio \
     /usr/local/include/opencv2/core/cvstd.inl.hpp \
     /usr/include/c++/5/complex \
     /usr/include/c++/5/sstream \
@@ -262,9 +267,4 @@ src/test.o : ../src/test.cu \
     /usr/local/include/opencv2/highgui/highgui_c.h \
     /usr/local/include/opencv2/imgcodecs/imgcodecs_c.h \
     /usr/local/include/opencv2/videoio/videoio_c.h \
-    /usr/local/include/opencv2/core/core.hpp \
-    /usr/include/c++/5/fstream \
-    /usr/include/c++/5/bits/codecvt.h \
-    /usr/include/x86_64-linux-gnu/c++/5/bits/basic_file.h \
-    /usr/include/x86_64-linux-gnu/c++/5/bits/c++io.h \
-    /usr/include/c++/5/bits/fstream.tcc
+    /usr/local/include/opencv2/core/core.hpp

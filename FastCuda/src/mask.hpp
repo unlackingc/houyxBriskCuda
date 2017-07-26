@@ -9,15 +9,9 @@
 #define MASK_HPP_
 
 #include <iostream>
-#include "opencv2/cudafeatures2d.hpp"
-#include <opencv2/features2d/features2d.hpp>
-#include <opencv/cv.h>
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/core/core.hpp>
+#include "cuda_types.hpp"
 
 using namespace std;
-using namespace cv;
-using namespace cv::cuda;
 
    ///////////////////////////////////////////////////////////////////////////////
     // swap
@@ -80,8 +74,8 @@ struct SingleMaskChannels
 
 	__device__ __forceinline__ bool operator()(int y, int x) const
 	{
-		uchar val;
-		return curMask.data == 0 || (ForceGlob<uchar>::Load(curMask.ptr(y), x, val), (val != 0));
+		unsigned char val;
+		return curMask.data == 0 || (ForceGlob<unsigned char>::Load(curMask.ptr(y), x, val), (val != 0));
 	}
 
 	const PtrStepb* maskCollection;

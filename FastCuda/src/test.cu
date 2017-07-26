@@ -7,6 +7,11 @@
 
 
 #include "FastCuda.h"
+#include "opencv2/cudafeatures2d.hpp"
+#include <opencv2/features2d/features2d.hpp>
+#include <opencv/cv.h>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/core/core.hpp>
 
 using namespace std;
 using namespace cv;
@@ -38,19 +43,19 @@ GpuMat loadMat(const Mat& m, bool useRoi = false)
 }
 
 #define idx(i,j) (j*cols + i)
-void checkContentWithGpu( uchar* dcpu, uchar* dgpu, int rows, int cols)
+void checkContentWithGpu( unsigned char* dcpu, unsigned char* dgpu, int rows, int cols)
 {
 	ofstream dout("debug.txt");
-	uchar* temp;
-	temp = new uchar[rows*cols];
-	cudaMemcpy(temp, dgpu, sizeof(uchar)*rows*cols, cudaMemcpyDeviceToHost) ;
+	unsigned char* temp;
+	temp = new unsigned char[rows*cols];
+	cudaMemcpy(temp, dgpu, sizeof(unsigned char)*rows*cols, cudaMemcpyDeviceToHost) ;
 
 	int temp1,temp2;
 	for( int i = 0; i < cols; i ++ )
 	{
 		for( int j = 0; j < rows; j ++)
 		{
-			temp1 = (uchar)(dcpu[idx(i,j)]), temp2 = (uchar)(temp[idx(i,j)]);
+			temp1 = (unsigned char)(dcpu[idx(i,j)]), temp2 = (unsigned char)(temp[idx(i,j)]);
 			//cout << hex << dcpu[idx(i,j)] << " ->G:-> " << temp[idx(i,j)] << endl;
 			if( i%640 ==1)
 			cout << i<<"-" << j <<":\t"<< temp1 << " ::: " << temp2 << endl;
@@ -61,12 +66,12 @@ void checkContentWithGpu( uchar* dcpu, uchar* dgpu, int rows, int cols)
 	free(temp);
 }
 
-void outputGpuMat( InputArray _image, uchar* dgpu, int rows, int cols )
+void outputGpuMat( InputArray _image, unsigned char* dgpu, int rows, int cols )
 {
     ofstream dout("debugcv2.txt");
-    uchar* temp;
-    temp = new uchar[rows*cols];
-    cudaMemcpy(temp, dgpu, sizeof(uchar)*rows*cols, cudaMemcpyDeviceToHost) ;
+    unsigned char* temp;
+    temp = new unsigned char[rows*cols];
+    cudaMemcpy(temp, dgpu, sizeof(unsigned char)*rows*cols, cudaMemcpyDeviceToHost) ;
 
     int temp1;
 
@@ -74,7 +79,7 @@ void outputGpuMat( InputArray _image, uchar* dgpu, int rows, int cols )
     {
         for( int j = 0; j < rows; j ++)
         {
-            temp1 = (uchar)(temp[j*cols+i]);
+            temp1 = (unsigned char)(temp[j*cols+i]);
             //cout << hex << dcpu[idx(i,j)] << " ->G:-> " << temp[idx(i,j)] << endl;
             cout << i<<"-" << j <<":\t"<< temp1 << endl;
             dout << i<<"-" << j <<":\t"<< temp1 << endl;
@@ -123,13 +128,13 @@ int main()
 	score.setTo(Scalar::all(0));
 
 	//score.
-	checkContentWithGpu((uchar*)(testImgGrayCpu.data), testImgGray.data, testImgGrayCpu.rows,testImgGrayCpu.cols);
+	checkContentWithGpu((unsigned char*)(testImgGrayCpu.data), testImgGray.data, testImgGrayCpu.rows,testImgGrayCpu.cols);
 	//outputGpuMat( testImgGrayCpu, loadMat(testImgGrayCpu).data, testImgGrayCpu.rows, testImgGrayCpu.cols );
 	outputGpuMat( testImgGrayCpu, testImgGray.data, testImgGrayCpu.rows, testImgGrayCpu.cols );
 	waitKey();
 	detectMe(testImgGray.rows, testImgGray.cols, testImgGray.step, testImgGray.data, keyPoints.ptr<short2>(), (int*)score.data, loc.ptr<short2>(), (float*)response.data);
 	//detectMe1(testImgGrayCpu, testImgGray.rows, testImgGray.cols, loadMat(testImgGrayCpu), keyPoints.ptr<short2>(), score, loc.ptr<short2>(), (float*)response.data);
-	//detectMe(int rows, int cols, uchar* image, short2* keyPoints, int* scores, short2* loc, float* response,int threshold=20, int maxPoints=2000, bool ifNoMaxSup = true);
+	//detectMe(int rows, int cols, unsigned char* image, short2* keyPoints, int* scores, short2* loc, float* response,int threshold=20, int maxPoints=2000, bool ifNoMaxSup = true);
 
     int drawmode = DrawMatchesFlags::DRAW_RICH_KEYPOINTS;
     Mat result;
