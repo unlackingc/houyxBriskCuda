@@ -4,6 +4,8 @@
 #include <opencv/cv.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/core/core.hpp>
+#include <fstream>
+#include <cuda_runtime.h>
 
 using namespace std;
 using namespace cv;
@@ -34,6 +36,30 @@ GpuMat loadMat(const Mat& m, bool useRoi = false)
     return d_m;
 }
 
+
+void outputGpuMat( InputArray _image, uchar* dgpu, int rows, int cols )
+{
+    ofstream dout("debugcv1.txt");
+    uchar* temp;
+    temp = new uchar[rows*cols];
+    cudaMemcpy(temp, dgpu, sizeof(uchar)*rows*cols, cudaMemcpyDeviceToHost) ;
+
+    int temp1;
+
+    for( int i = 0; i < cols; i ++ )
+    {
+        for( int j = 0; j < rows; j ++)
+        {
+            temp1 = (uchar)(temp[j*cols+i]);
+            //cout << hex << dcpu[idx(i,j)] << " ->G:-> " << temp[idx(i,j)] << endl;
+            cout << i<<"-" << j <<":\t"<< temp1 << endl;
+            dout << i<<"-" << j <<":\t"<< temp1 << endl;
+        }
+    }
+    dout.close();
+    free(temp);
+}
+
 int main()
 {
 	Mat testImg = imread( "data/test1.jpg" );
@@ -49,7 +75,11 @@ int main()
 
 
 	Ptr<cv::cuda::FastFeatureDetector> fastDetector_;
-	fastDetector_ = cuda::FastFeatureDetector::create();
+	fastDetector_ = cuda::FastFeatureDetector::create(10,false);
+	cout << "I am here" << endl;
+	outputGpuMat( testImgGray, loadMat(testImgGray).data, testImgGray.rows, testImgGray.cols );
+	waitKey();
+	cout << "I am here1" << endl;
 
 	GpuMat fastKpRange;
 	fastDetector_->detectAsync(loadMat(testImgGray), fastKpRange);
@@ -70,7 +100,8 @@ int main()
     cout<<"size of description of Img: "<<fastKpRange.size()<<endl;
     for( int i = 0; i < KpRange.size(); i ++ )
     {
-    	cout << "key point " <<i << ":\t" << KpRange[i].pt.x <<"\t" << KpRange[i].pt.y <<endl;
+    	int p =0;
+    	//cout << "key point " <<i << ":\t" << KpRange[i].pt.x <<"\t" << KpRange[i].pt.y <<endl;
     }
 	cout << "starting" << endl;
 

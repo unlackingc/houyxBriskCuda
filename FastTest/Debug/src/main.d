@@ -213,4 +213,25 @@ src/main.o : ../src/main.cpp \
     /usr/local/include/opencv2/highgui/highgui_c.h \
     /usr/local/include/opencv2/imgcodecs/imgcodecs_c.h \
     /usr/local/include/opencv2/videoio/videoio_c.h \
-    /usr/local/include/opencv2/core/core.hpp
+    /usr/local/include/opencv2/core/core.hpp \
+    /usr/include/c++/5/fstream \
+    /usr/include/c++/5/bits/codecvt.h \
+    /usr/include/x86_64-linux-gnu/c++/5/bits/basic_file.h \
+    /usr/include/x86_64-linux-gnu/c++/5/bits/c++io.h \
+    /usr/include/c++/5/bits/fstream.tcc \
+    /usr/local/cuda-8.0/bin/..//include/cuda_runtime.h \
+    /usr/local/cuda-8.0/bin/..//include/host_config.h \
+    /usr/local/cuda-8.0/bin/..//include/builtin_types.h \
+    /usr/local/cuda-8.0/bin/..//include/device_types.h \
+    /usr/local/cuda-8.0/bin/..//include/host_defines.h \
+    /usr/local/cuda-8.0/bin/..//include/driver_types.h \
+    /usr/local/cuda-8.0/bin/..//include/surface_types.h \
+    /usr/local/cuda-8.0/bin/..//include/texture_types.h \
+    /usr/local/cuda-8.0/bin/..//include/vector_types.h \
+    /usr/local/cuda-8.0/bin/..//include/library_types.h \
+    /usr/local/cuda-8.0/bin/..//include/channel_descriptor.h \
+    /usr/local/cuda-8.0/bin/..//include/cuda_runtime_api.h \
+    /usr/local/cuda-8.0/bin/..//include/cuda_device_runtime_api.h \
+    /usr/local/cuda-8.0/bin/..//include/driver_functions.h \
+    /usr/local/cuda-8.0/bin/..//include/vector_functions.h \
+    /usr/local/cuda-8.0/bin/..//include/vector_functions.hpp
