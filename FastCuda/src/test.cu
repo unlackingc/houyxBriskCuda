@@ -106,9 +106,10 @@ int main()
 	imshow("test", testImgGrayCpu);
 	//waitKey();
 
-
+	//opencv origin
 	Ptr<cv::cuda::FastFeatureDetector> fastDetector_;
 	fastDetector_ = cuda::FastFeatureDetector::create();
+
 
 	GpuMat fastKpRange;
 	fastDetector_->detectAsync(loadMat(testImgGrayCpu), fastKpRange);
@@ -127,12 +128,19 @@ int main()
 	GpuMat score = loadMat(scoreCpu);
 	score.setTo(Scalar::all(0));
 
+	GpuMat _keypoints;
+    ensureSizeIsEnough(cuda::FastFeatureDetector::ROWS_COUNT, 5000, CV_32FC1, _keypoints);
+    //GpuMat& keypoints = _keypoints.getGpuMatRef();
+
 	//score.
-	checkContentWithGpu((unsigned char*)(testImgGrayCpu.data), testImgGray.data, testImgGrayCpu.rows,testImgGrayCpu.cols);
+	//checkContentWithGpu((unsigned char*)(testImgGrayCpu.data), testImgGray.data, testImgGrayCpu.rows,testImgGrayCpu.cols);
 	//outputGpuMat( testImgGrayCpu, loadMat(testImgGrayCpu).data, testImgGrayCpu.rows, testImgGrayCpu.cols );
-	outputGpuMat( testImgGrayCpu, testImgGray.data, testImgGrayCpu.rows, testImgGrayCpu.cols );
-	waitKey();
-	detectMe(testImgGray.rows, testImgGray.cols, testImgGray.step, testImgGray.data, keyPoints.ptr<short2>(), (int*)score.data, loc.ptr<short2>(), (float*)response.data);
+	//outputGpuMat( testImgGrayCpu, testImgGray.data, testImgGrayCpu.rows, testImgGrayCpu.cols );
+	//waitKey();
+    //selfmade
+	int count = detectMe(testImgGray.rows, testImgGray.cols, testImgGray.step, testImgGray.data, keyPoints.ptr<short2>(), (int*)score.data, _keypoints.ptr<short2>(cuda::FastFeatureDetector::LOCATION_ROW), _keypoints.ptr<float>(cuda::FastFeatureDetector::RESPONSE_ROW));
+	//detectMe(testImgGray.rows, testImgGray.cols, testImgGray.step, testImgGray.data, keyPoints.ptr<short2>(), (int*)score.data, loc.ptr<short2>(), (float*)response.data);
+	_keypoints.cols = count;
 	//detectMe1(testImgGrayCpu, testImgGray.rows, testImgGray.cols, loadMat(testImgGrayCpu), keyPoints.ptr<short2>(), score, loc.ptr<short2>(), (float*)response.data);
 	//detectMe(int rows, int cols, unsigned char* image, short2* keyPoints, int* scores, short2* loc, float* response,int threshold=20, int maxPoints=2000, bool ifNoMaxSup = true);
 
@@ -141,11 +149,19 @@ int main()
     vector<KeyPoint> KpRange;
     fastDetector_->convert(fastKpRange, KpRange);
     drawKeypoints(testImg, KpRange, result, Scalar::all(-1), drawmode);
-
+	imshow("result_opencv_Gpu", result);
+	//waitKey();
     cout <<"cols: " << testImgGray.cols << "\nrows: " << testImgGray.rows \
     		<< "\nelemSize: " << testImgGray.elemSize() << "\nstep: " << testImgGray.step <<endl;
 
-	imshow("result", result);
+    Mat result1;
+    vector<KeyPoint> KpRangeGpu;
+    cout << "there1" << endl;
+    fastDetector_->convert(_keypoints, KpRangeGpu);
+    cout << "there2" << endl;
+    drawKeypoints(testImg, KpRangeGpu, result1, Scalar::all(-1), drawmode);
+
+	imshow("result_Gpu", result1);
 	waitKey();
 
 

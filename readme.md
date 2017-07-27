@@ -9,6 +9,8 @@
 Api
 
 ``` cpp
+#include "FastCuda.h"
+
 int detectMe(int rows, int cols, int step, unsigned char* image, short2* keyPoints, int* scores, short2* loc, float* response,int threshold=10, int maxPoints=5000, bool ifNoMaxSup = true);
 
 rows: 行数

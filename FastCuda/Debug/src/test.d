@@ -185,6 +185,7 @@ src/test.o : ../src/test.cu \
     /usr/include/c++/5/istream \
     /usr/include/c++/5/bits/istream.tcc \
     ../src/cuda_types.hpp \
+    ../src/table.h \
     /usr/include/c++/5/fstream \
     /usr/include/c++/5/bits/codecvt.h \
     /usr/include/c++/5/cstdio \
