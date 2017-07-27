@@ -17,10 +17,11 @@ rows: 行数
 cols: 列数
 step: 参见opencvGpuMat定义，如果数组连续，step=cols
 image: 4深度灰度图像数组
-keyPoints: 不做noMaxsup时的KeyPoint坐标
-scores: 不做noMaxsup时的KeyPoint Score,存放在对应的（i,j）上
-loc: 做noMaxsup时的KeyPoint坐标
-response： 做noMaxsup时的KeyPoint Score，index和loc相同
+keyPoints: 不做noMaxsup时的KeyPoint坐标  size = maxPoints
+scores: 不做noMaxsup时的KeyPoint Score,存放在对应的（i,j）上。 size = image.rows*image.cols
+loc: 做noMaxsup时的KeyPoint坐标。  size = maxPoints
+response： 做noMaxsup时的KeyPoint Score，index和loc相同， size = maxPoints
+以上数组都需要事先开辟好
 ```
 
 
