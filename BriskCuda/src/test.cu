@@ -6,8 +6,12 @@
  */
 
 
-#include "FastCuda.h"
-
+#include "libsrc/FastCuda/FastCuda.h"
+#include "opencv2/cudafeatures2d.hpp"
+#include <opencv2/features2d/features2d.hpp>
+#include <opencv/cv.h>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/core/core.hpp>
 
 using namespace std;
 using namespace cv;
@@ -134,12 +138,12 @@ int main()
 	//outputGpuMat( testImgGrayCpu, testImgGray.data, testImgGrayCpu.rows, testImgGrayCpu.cols );
 	//waitKey();
     //selfmade
-	//int count = detectMe(testImgGray.rows, testImgGray.cols, testImgGray.step, testImgGray.data, keyPoints.ptr<short2>(), (int*)score.data, _keypoints.ptr<short2>(cuda::FastFeatureDetector::LOCATION_ROW), _keypoints.ptr<float>(cuda::FastFeatureDetector::RESPONSE_ROW));
+	int count = detectMe(testImgGray.rows, testImgGray.cols, testImgGray.step, testImgGray.data, keyPoints.ptr<short2>(), (int*)score.data, _keypoints.ptr<short2>(cuda::FastFeatureDetector::LOCATION_ROW), _keypoints.ptr<float>(cuda::FastFeatureDetector::RESPONSE_ROW));
 	//detectMe(testImgGray.rows, testImgGray.cols, testImgGray.step, testImgGray.data, keyPoints.ptr<short2>(), (int*)score.data, loc.ptr<short2>(), (float*)response.data);
-
-	int count = detectMe1( loadMat(testImgGrayCpu), _keypoints.ptr<short2>(cuda::FastFeatureDetector::LOCATION_ROW), score,  _keypoints.ptr<short2>(cuda::FastFeatureDetector::LOCATION_ROW), _keypoints.ptr<float>(cuda::FastFeatureDetector::RESPONSE_ROW) );
-	//detectMe(int rows, int cols, unsigned char* image, short2* keyPoints, int* scores, short2* loc, float* response,int threshold=20, int maxPoints=2000, bool ifNoMaxSup = true);
 	_keypoints.cols = count;
+	//detectMe1(testImgGrayCpu, testImgGray.rows, testImgGray.cols, loadMat(testImgGrayCpu), keyPoints.ptr<short2>(), score, loc.ptr<short2>(), (float*)response.data);
+	//detectMe(int rows, int cols, unsigned char* image, short2* keyPoints, int* scores, short2* loc, float* response,int threshold=20, int maxPoints=2000, bool ifNoMaxSup = true);
+
     int drawmode = DrawMatchesFlags::DRAW_RICH_KEYPOINTS;
     Mat result;
     vector<KeyPoint> KpRange;

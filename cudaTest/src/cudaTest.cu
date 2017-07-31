@@ -12,87 +12,118 @@
 #include <numeric>
 #include <stdlib.h>
 #include "cuda_types.hpp"
+#include <assert.h>
+#include <cuda_runtime.h>
+#include <cuda.h>
+#include "memory.h"
+#include "string.h"
 
-static void CheckCudaErrorAux (const char *, unsigned, const char *, cudaError_t);
-#define CUDA_CHECK_RETURN(value) CheckCudaErrorAux(__FILE__,__LINE__, #value, value)
+using namespace std;
 
-/**
- * CUDA kernel that computes reciprocal values for a given vector
- */
-__global__ void reciprocalKernel(float *data, unsigned vectorSize) {
-	unsigned idx = blockIdx.x*blockDim.x+threadIdx.x;
 
-	if (idx < vectorSize)
-		data[idx] = 1.0/data[idx];
-}
+const int size = 15;
 
-/**
- * Host function that copies the data and launches the work on GPU
- */
-float *gpuReciprocal(float *data, unsigned size)
+
+class VV
 {
-	float *rc = new float[size];
-	float *gpuData;
+public:
 
-	CUDA_CHECK_RETURN(cudaMalloc((void **)&gpuData, sizeof(float)*size));
-	CUDA_CHECK_RETURN(cudaMemcpy(gpuData, data, sizeof(float)*size, cudaMemcpyHostToDevice));
-	
-	static const int BLOCK_SIZE = 256;
-	const int blockCount = (size+BLOCK_SIZE-1)/BLOCK_SIZE;
-	reciprocalKernel<<<blockCount, BLOCK_SIZE>>> (gpuData, size);
+	int val;
+	int myarray[size];
 
+	VV():val(11)
+	{
+		//myarray = new int[size];
+		for( int i = 0; i < size; i++ )
+		{
+			myarray[i] = i;
+		}
+	}
 
-	CUDA_CHECK_RETURN(cudaMemcpy(rc, gpuData, sizeof(float)*size, cudaMemcpyDeviceToHost));
-	CUDA_CHECK_RETURN(cudaFree(gpuData));
-	return rc;
-}
+/*	~VV()
+	{
+		if( myarray != NULL )
+			free(myarray);
+	}*/
 
-float *cpuReciprocal(float *data, unsigned size)
+	__device__ void changeSelf()
+	{
+		val = val + 3;
+	}
+
+	void testGlobal();
+};
+
+__global__ void changeVal( VV* a )
 {
-	float *rc = new float[size];
-	for (unsigned cnt = 0; cnt < size; ++cnt) rc[cnt] = 1.0/data[cnt];
-	return rc;
+	int id = threadIdx.x + blockIdx.x * blockDim.x;
+	a->myarray[id] =a->myarray[id]*2;
+	a->val = 2*a->val;
+	a->changeSelf();
 }
 
-
-void initialize(float *data, unsigned size)
+__global__ void getVal( VV a, int* ret )
 {
-	for (unsigned i = 0; i < size; ++i)
-		data[i] = .5*(i+1);
+	int id = threadIdx.x + blockIdx.x * blockDim.x;
+	//a.myarray[id] *=2;
+	ret[id] = a.myarray[id];
 }
+
+
+void VV::testGlobal()
+{
+	VV* aInner;
+	cudaMalloc((void**)&aInner, sizeof(VV));
+	cudaMemcpy(aInner,this,sizeof(VV),cudaMemcpyHostToDevice);
+
+	changeVal<<<1,size>>>(aInner);
+
+	cudaMemcpy(this,aInner,sizeof(VV),cudaMemcpyDeviceToHost);
+}
+
 
 int main(void)
 {
-	static const int WORK_SIZE = 65530;
-	float *data = new float[WORK_SIZE];
 
-	initialize (data, WORK_SIZE);
+/*	VV* a = new VV();
+	VV* aInner;
+	cudaMalloc((void**)&aInner, sizeof(VV));
+	cudaMemcpy(aInner,a,sizeof(VV),cudaMemcpyHostToDevice);
 
-	float *recCpu = cpuReciprocal(data, WORK_SIZE);
-	float *recGpu = gpuReciprocal(data, WORK_SIZE);
-	float cpuSum = std::accumulate (recCpu, recCpu+WORK_SIZE, 0.0);
-	float gpuSum = std::accumulate (recGpu, recGpu+WORK_SIZE, 0.0);
+	changeVal<<<1,size>>>(aInner);
 
-	/* Verify the results */
-	std::cout<<"gpuSum = "<<gpuSum<< " cpuSum = " <<cpuSum<<std::endl;
+	cudaMemcpy(a,aInner,sizeof(VV),cudaMemcpyDeviceToHost);*/
 
-	/* Free memory */
-	delete[] data;
-	delete[] recCpu;
-	delete[] recGpu;
 
+	VV a;
+	a.testGlobal();
+
+	cout << "begin  sizeof(VV)::\t" << sizeof(VV) << endl;
+
+
+	int * tempInner;;
+
+	cudaMalloc((void**)&tempInner, sizeof(int) * size);
+	cudaMemset ( tempInner, 0, sizeof(int)*size );
+
+
+
+	getVal<<<1,size>>>(a,tempInner);
+
+	int tempOuter[size];
+
+	memset( tempOuter, 0, size*sizeof(int) );
+
+	cudaMemcpy(tempOuter,tempInner,sizeof(int)*size,cudaMemcpyDeviceToHost);
+
+
+	for( int i = 0; i < size; i ++ )
+	{
+		cout << "after::\t" << i << "::: " << tempOuter[i] << endl;
+	}
+
+
+	cudaFree(tempInner);
 	return 0;
-}
-
-/**
- * Check the return value of the CUDA runtime API call and exit
- * the application if the call has failed.
- */
-static void CheckCudaErrorAux (const char *file, unsigned line, const char *statement, cudaError_t err)
-{
-	if (err == cudaSuccess)
-		return;
-	std::cerr << statement<<" returned " << cudaGetErrorString(err) << "("<<err<< ") at "<<file<<":"<<line << std::endl;
-	exit (1);
 }
 

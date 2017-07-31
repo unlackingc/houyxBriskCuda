@@ -10,7 +10,7 @@
 
 #include "mask.hpp"
 #include "table.h"
-#include "cuda_types.hpp"
+#include "../../cuda_types.hpp"
 //debug
 #include <iostream>
 /*#include "opencv2/cudafeatures2d.hpp"
@@ -19,17 +19,8 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/core/core.hpp>*/
 #include "fstream"
-#include "opencv2/cudafeatures2d.hpp"
-#include <opencv2/features2d/features2d.hpp>
-#include <opencv/cv.h>
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/core/core.hpp>
+
 #include <cuda_runtime.h>
-
-
-using namespace std;
-using namespace cv;
-using namespace cv::cuda;
 
 /*#if !defined(unsigned char)
 #define unsigned char unsigned char

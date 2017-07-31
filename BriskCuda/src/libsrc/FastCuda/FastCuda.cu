@@ -4,17 +4,9 @@
 #include <assert.h>
 
 #include "FastCuda.h"
-#include "cuda_types.hpp"
-#include "opencv2/cudafeatures2d.hpp"
-#include <opencv2/features2d/features2d.hpp>
-#include <opencv/cv.h>
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/core/core.hpp>
-#include <cuda_runtime.h>
+#include "../../cuda_types.hpp"
 
 using namespace std;
-using namespace cv;
-using namespace cv::cuda;
 
 
 __device__ unsigned int g_counter = 0;
@@ -483,4 +475,3 @@ int detectMe1( PtrStepSzb image, short2* keyPoints, PtrStepSzi scores, short2* l
     printf("m1 count after noMax: %d\n", count );
     return count;
 }
-

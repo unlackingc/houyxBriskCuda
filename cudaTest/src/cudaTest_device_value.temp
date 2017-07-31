@@ -1,0 +1,124 @@
+/*
+ ============================================================================
+ Name        : cudaTest.cu
+ Author      : houyx
+ Version     :
+ Copyright   : Your copyright notice
+ Description : CUDA compute reciprocals
+ ============================================================================
+ */
+
+#include <iostream>
+#include <numeric>
+#include <stdlib.h>
+#include "cuda_types.hpp"
+#include <assert.h>
+#include <cuda_runtime.h>
+#include <cuda.h>
+#include "memory.h"
+#include "string.h"
+
+using namespace std;
+
+int times = 0;
+
+const int size = 10;
+int testOuter[size];
+
+__device__ int *testInner;
+
+
+__global__ void changeValue()
+{
+	int tId = threadIdx.x + blockIdx.x * blockDim.x;
+
+	testInner[tId]=testInner[tId] + 1;
+
+}
+
+__global__ void initSpace(int size)
+{
+	testInner = new int[size];
+}
+
+__global__ void setValue()
+{
+	int tId = threadIdx.x + blockIdx.x * blockDim.x;
+
+	testInner[tId] = tId;
+	//testInner[tId]= tId;
+
+}
+
+
+__global__ void getValue( int * temp )
+{
+	int tId = threadIdx.x + blockIdx.x * blockDim.x;
+
+	//testInner[tId] = tId;
+
+	temp[tId]= testInner[tId];
+}
+
+
+void displayValue()
+{
+	int* testInner1;
+
+	cudaMalloc((void**)&testInner1, sizeof(int) * size);
+
+	cudaMemcpy(testInner1, testOuter, sizeof(int) * size, cudaMemcpyHostToDevice);
+
+	getValue<<<1,size>>>(testInner1);
+
+	int * temp = new int[size];
+
+	memset(temp, 0, size*sizeof(int));
+
+	cudaMemcpy(temp, testInner1, sizeof(int) * size, cudaMemcpyDeviceToHost);
+
+	cout << "\n\n\n========================\n";
+	for( int i = 0; i < size; i++ )
+	{
+		cout << i <<  "::::GPU \t" << temp[i] << endl;
+	}
+}
+
+int main(void)
+{
+	for( int i = 0; i < size; i ++ )
+	{
+		testOuter[i] = 555;
+	}
+
+	for( int i = 0; i < size; i++ )
+	{
+		cout << i <<  "::::CPU \t" << testOuter[i] << endl;
+	}
+
+	cout << "\n\n\n";
+
+	//test a1(1);
+	//cudaMemset ( testInner, 0, sizeof(int)*size );
+	//cudaMalloc((void**)&testInner, sizeof(int) * size);
+
+	initSpace<<<1,1>>>(size);
+	setValue<<<1,size>>>();
+
+	for( int i = 0; i < 10; i ++ )
+	{
+
+		changeValue<<<1,size>>>();
+		displayValue();
+	}
+
+
+/*	for( int i = 0; i < 10; i++ )
+	{
+		outputGpuVar(testInner,size);
+		cout << "\n\n=============\n";
+	}*/
+
+	return 0;
+}
+
