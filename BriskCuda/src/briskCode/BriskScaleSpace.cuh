@@ -86,7 +86,7 @@ public:
 	__host__ inline void
 	twothirdsample(const PtrStepSzb& srcimg, PtrStepSzb& dstimg);
 
-	BriskLayerOne(const PtrStepSzb& img_in, float scale_in, float offset_in);
+	BriskLayerOne(const PtrStepSzb& img_in, float scale = 1.0f, float offset = 0.0f);
 
 	BriskLayerOne(const BriskLayerOne& layer, int mode);
 
@@ -111,7 +111,7 @@ public:
 protected:
   // nonmax suppression:
   __device__ inline bool
-  isMax2D(const int layer, const int x_layer, const int y_layer);
+  isMax2D(BriskLayerOne* layers, const int layer, const int x_layer, const int y_layer);
   // 1D (scale axis) refinement:
   __device__ inline float
   refine1D(const float s_05, const float s0, const float s05, float& max) const; // around octave
@@ -131,9 +131,9 @@ protected:
 
   // interpolated score access with recalculation when needed:
   __device__ inline int
-  getScoreAbove(const int layer, const int x_layer, const int y_layer) const;
+  getScoreAbove(BriskLayerOne* layers,const int layer, const int x_layer, const int y_layer) const;
   __device__ inline int
-  getScoreBelow(const int layer, const int x_layer, const int y_layer) const;
+  getScoreBelow(BriskLayerOne* layers,const int layer, const int x_layer, const int y_layer) const;
 
   // return the maximum of score patches above or below
   __device__ inline float

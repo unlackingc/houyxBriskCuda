@@ -13,21 +13,438 @@
 #include "BriskScaleSpace.cuh"
 
 
+// construct the image pyramids
+void
+BriskScaleSpace::constructPyramid(const PtrStepSzb& image)
+{
+  assert( layers_ == 8 );
+
+  const int octaves2 = layers_;
+
+  pyramid_[0] = BriskLayerOne(image);
+  pyramid_[1] = BriskLayerOne(pyramid_[0], BriskLayerOne::CommonParams::TWOTHIRDSAMPLE);
+
+  for (int i = 2; i < octaves2; i += 2)
+  {
+    pyramid_[i] = BriskLayerOne(BriskLayerOne(pyramid_[i - 2], BriskLayerOne::CommonParams::HALFSAMPLE));
+    pyramid_[i+1] = BriskLayerOne(BriskLayerOne(pyramid_[i - 1], BriskLayerOne::CommonParams::HALFSAMPLE));
+  }
+}
+
 
 /***
- *直接移植？
+ * todo: keypoint的返回值有待于考察是否需要score,和如何传递
+ * 获取特征点的关键函数，包括最大值抑制，插值等等
+ * @param threshold_
+ * @param keypoints
  */
+void
+BriskScaleSpace::getKeypoints(const int threshold_, short2* keypoints)
+{
+  // assign thresholds
+  int safeThreshold_ = (int)(threshold_ * safetyFactor_);
+  std::vector<std::vector<cv::KeyPoint> > agastPoints;
+
+
+
+  agastPoints.resize(layers_);
+
+  // go through the octaves and intra layers and calculate agast corner scores:
+  for (int i = 0; i < layers_; i++)
+  {
+    // call OAST16_9 without nms
+    BriskLayer& l = pyramid_[i];
+    l.getAgastPoints(safeThreshold_, agastPoints[i]);
+  }
+
+  if (layers_ == 1)
+  {
+    // just do a simple 2d subpixel refinement...
+    const size_t num = agastPoints[0].size();
+    for (size_t n = 0; n < num; n++)
+    {
+      const cv::Point2f& point = agastPoints.at(0)[n].pt;
+      // first check if it is a maximum:
+      //非极大值抑制
+      if (!isMax2D(0, (int)point.x, (int)point.y))
+        continue;
+
+      // let's do the subpixel and float scale refinement:
+      BriskLayer& l = pyramid_[0];
+      int s_0_0 = l.getAgastScore(point.x - 1, point.y - 1, 1);
+      int s_1_0 = l.getAgastScore(point.x, point.y - 1, 1);
+      int s_2_0 = l.getAgastScore(point.x + 1, point.y - 1, 1);
+      int s_2_1 = l.getAgastScore(point.x + 1, point.y, 1);
+      int s_1_1 = l.getAgastScore(point.x, point.y, 1);
+      int s_0_1 = l.getAgastScore(point.x - 1, point.y, 1);
+      int s_0_2 = l.getAgastScore(point.x - 1, point.y + 1, 1);
+      int s_1_2 = l.getAgastScore(point.x, point.y + 1, 1);
+      int s_2_2 = l.getAgastScore(point.x + 1, point.y + 1, 1);
+      float delta_x, delta_y;
+      float max = subpixel2D(s_0_0, s_0_1, s_0_2, s_1_0, s_1_1, s_1_2, s_2_0, s_2_1, s_2_2, delta_x, delta_y);
+
+      // store:
+      keypoints.push_back(cv::KeyPoint(float(point.x) + delta_x, float(point.y) + delta_y, basicSize_, -1, max, 0));
+
+    }
+
+    return;
+  }
+
+  float x, y, scale, score;
+  for (int i = 0; i < layers_; i++)
+  {
+    BriskLayer& l = pyramid_[i];
+    const size_t num = agastPoints[i].size();
+    if (i == layers_ - 1)
+    {
+      for (size_t n = 0; n < num; n++)
+      {
+        const cv::Point2f& point = agastPoints.at(i)[n].pt;
+        // consider only 2D maxima...
+        if (!isMax2D(i, (int)point.x, (int)point.y))
+          continue;
+
+        bool ismax;
+        float dx, dy;
+        getScoreMaxBelow(i, (int)point.x, (int)point.y, l.getAgastScore(point.x, point.y, safeThreshold_), ismax, dx, dy);
+        if (!ismax)
+          continue;
+
+        // get the patch on this layer:
+        int s_0_0 = l.getAgastScore(point.x - 1, point.y - 1, 1);
+        int s_1_0 = l.getAgastScore(point.x, point.y - 1, 1);
+        int s_2_0 = l.getAgastScore(point.x + 1, point.y - 1, 1);
+        int s_2_1 = l.getAgastScore(point.x + 1, point.y, 1);
+        int s_1_1 = l.getAgastScore(point.x, point.y, 1);
+        int s_0_1 = l.getAgastScore(point.x - 1, point.y, 1);
+        int s_0_2 = l.getAgastScore(point.x - 1, point.y + 1, 1);
+        int s_1_2 = l.getAgastScore(point.x, point.y + 1, 1);
+        int s_2_2 = l.getAgastScore(point.x + 1, point.y + 1, 1);
+        float delta_x, delta_y;
+        float max = subpixel2D(s_0_0, s_0_1, s_0_2, s_1_0, s_1_1, s_1_2, s_2_0, s_2_1, s_2_2, delta_x, delta_y);
+
+        // store:
+        keypoints.push_back(
+            cv::KeyPoint((float(point.x) + delta_x) * l.scale() + l.offset(),
+                         (float(point.y) + delta_y) * l.scale() + l.offset(), basicSize_ * l.scale(), -1, max, i));
+      }
+    }
+    else
+    {
+      // not the last layer:
+      for (size_t n = 0; n < num; n++)
+      {
+        const cv::Point2f& point = agastPoints.at(i)[n].pt;
+
+        // first check if it is a maximum:
+        if (!isMax2D(i, (int)point.x, (int)point.y))
+          continue;
+
+        // let's do the subpixel and float scale refinement:
+        bool ismax=false;
+
+        //可见refine3D是真正判断是否最大的货色
+        score = refine3D(i, (int)point.x, (int)point.y, x, y, scale, ismax);
+        if (!ismax)
+        {
+          continue;
+        }
+
+
+        //理解这个basicSize的真实含义
+        // finally store the detected keypoint:
+        if (score > float(threshold_))
+        {
+          keypoints.push_back(cv::KeyPoint(x, y, basicSize_ * scale, -1, score, i));
+        }
+      }
+    }
+  }
+}
+
+
+
+
+//直接移植
+// interpolated score access with recalculation when needed:
+__device__ inline int
+BriskScaleSpace::getScoreAbove(BriskLayerOne* layers,const int layer, const int x_layer, const int y_layer) const
+{
+  assert(layer < layers_-1);
+  const BriskLayerOne& l = pyramid_[layer + 1];
+  if (layer % 2 == 0)
+  { // octave
+    const int sixths_x = 4 * x_layer - 1;
+    const int x_above = sixths_x / 6;
+    const int sixths_y = 4 * y_layer - 1;
+    const int y_above = sixths_y / 6;
+    const int r_x = (sixths_x % 6);
+    const int r_x_1 = 6 - r_x;
+    const int r_y = (sixths_y % 6);
+    const int r_y_1 = 6 - r_y;
+    unsigned char score = 0xFF
+        & ((r_x_1 * r_y_1 * l.getAgastScore(x_above, y_above, 1) + r_x * r_y_1
+                                                                   * l.getAgastScore(x_above + 1, y_above, 1)
+            + r_x_1 * r_y * l.getAgastScore(x_above, y_above + 1, 1)
+            + r_x * r_y * l.getAgastScore(x_above + 1, y_above + 1, 1) + 18)
+           / 36);
+
+    return score;
+  }
+  else
+  { // intra
+    const int eighths_x = 6 * x_layer - 1;
+    const int x_above = eighths_x / 8;
+    const int eighths_y = 6 * y_layer - 1;
+    const int y_above = eighths_y / 8;
+    const int r_x = (eighths_x % 8);
+    const int r_x_1 = 8 - r_x;
+    const int r_y = (eighths_y % 8);
+    const int r_y_1 = 8 - r_y;
+    unsigned char score = 0xFF
+        & ((r_x_1 * r_y_1 * l.getAgastScore(x_above, y_above, 1) + r_x * r_y_1
+                                                                   * l.getAgastScore(x_above + 1, y_above, 1)
+            + r_x_1 * r_y * l.getAgastScore(x_above, y_above + 1, 1)
+            + r_x * r_y * l.getAgastScore(x_above + 1, y_above + 1, 1) + 32)
+           / 64);
+    return score;
+  }
+}
+
+
+//直接移植
+__device__ inline int
+BriskScaleSpace::getScoreBelow(BriskLayerOne* layers,const int layer, const int x_layer, const int y_layer) const
+{
+  assert(layer);
+  const BriskLayerOne& l = layers[layer - 1];
+  int sixth_x;
+  int quarter_x;
+  float xf;
+  int sixth_y;
+  int quarter_y;
+  float yf;
+
+  // scaling:
+  float offs;
+  float area;
+  int scaling;
+  int scaling2;
+
+  if (layer % 2 == 0)
+  { // octave
+    sixth_x = 8 * x_layer + 1;
+    xf = float(sixth_x) / 6.0f;
+    sixth_y = 8 * y_layer + 1;
+    yf = float(sixth_y) / 6.0f;
+
+    // scaling:
+    offs = 2.0f / 3.0f;
+    area = 4.0f * offs * offs;
+    scaling = (int)(4194304.0 / area);
+    scaling2 = (int)(float(scaling) * area);
+  }
+  else
+  {
+    quarter_x = 6 * x_layer + 1;
+    xf = float(quarter_x) / 4.0f;
+    quarter_y = 6 * y_layer + 1;
+    yf = float(quarter_y) / 4.0f;
+
+    // scaling:
+    offs = 3.0f / 4.0f;
+    area = 4.0f * offs * offs;
+    scaling = (int)(4194304.0 / area);
+    scaling2 = (int)(float(scaling) * area);
+  }
+
+  // calculate borders
+  const float x_1 = xf - offs;
+  const float x1 = xf + offs;
+  const float y_1 = yf - offs;
+  const float y1 = yf + offs;
+
+  const int x_left = int(x_1 + 0.5);
+  const int y_top = int(y_1 + 0.5);
+  const int x_right = int(x1 + 0.5);
+  const int y_bottom = int(y1 + 0.5);
+
+  // overlap area - multiplication factors:
+  const float r_x_1 = float(x_left) - x_1 + 0.5f;
+  const float r_y_1 = float(y_top) - y_1 + 0.5f;
+  const float r_x1 = x1 - float(x_right) + 0.5f;
+  const float r_y1 = y1 - float(y_bottom) + 0.5f;
+  const int dx = x_right - x_left - 1;
+  const int dy = y_bottom - y_top - 1;
+  const int A = (int)((r_x_1 * r_y_1) * scaling);
+  const int B = (int)((r_x1 * r_y_1) * scaling);
+  const int C = (int)((r_x1 * r_y1) * scaling);
+  const int D = (int)((r_x_1 * r_y1) * scaling);
+  const int r_x_1_i = (int)(r_x_1 * scaling);
+  const int r_y_1_i = (int)(r_y_1 * scaling);
+  const int r_x1_i = (int)(r_x1 * scaling);
+  const int r_y1_i = (int)(r_y1 * scaling);
+
+  // first row:
+  int ret_val = A * int(l.getAgastScore(x_left, y_top, 1));
+  for (int X = 1; X <= dx; X++)
+  {
+    ret_val += r_y_1_i * int(l.getAgastScore(x_left + X, y_top, 1));
+  }
+  ret_val += B * int(l.getAgastScore(x_left + dx + 1, y_top, 1));
+  // middle ones:
+  for (int Y = 1; Y <= dy; Y++)
+  {
+    ret_val += r_x_1_i * int(l.getAgastScore(x_left, y_top + Y, 1));
+
+    for (int X = 1; X <= dx; X++)
+    {
+      ret_val += int(l.getAgastScore(x_left + X, y_top + Y, 1)) * scaling;
+    }
+    ret_val += r_x1_i * int(l.getAgastScore(x_left + dx + 1, y_top + Y, 1));
+  }
+  // last row:
+  ret_val += D * int(l.getAgastScore(x_left, y_top + dy + 1, 1));
+  for (int X = 1; X <= dx; X++)
+  {
+    ret_val += r_y1_i * int(l.getAgastScore(x_left + X, y_top + dy + 1, 1));
+  }
+  ret_val += C * int(l.getAgastScore(x_left + dx + 1, y_top + dy + 1, 1));
+
+  return ((ret_val + scaling2 / 2) / scaling2);
+}
+
+
+
+//直接移植
 /***
- * 重点
+ * 2维平面的最大值抑制
  * @param layer
  * @param x_layer
  * @param y_layer
- * @param threshold
- * @param ismax
- * @param dx
- * @param dy
  * @return
  */
+__device__ inline bool
+BriskScaleSpace::isMax2D(BriskLayerOne* layers,const int layer, const int x_layer, const int y_layer)
+{
+  const PtrStepSzi& scores = layers[layer].scores();
+  const int scorescols = scores.cols;
+  const int* data = scores.ptr() + y_layer * scorescols + x_layer;
+  // decision tree:
+  const unsigned char center = (*data);
+  data--;
+  const unsigned char s_10 = *data;
+  if (center < s_10)
+    return false;
+  data += 2;
+  const unsigned char s10 = *data;
+  if (center < s10)
+    return false;
+  data -= (scorescols + 1);
+  const unsigned char s0_1 = *data;
+  if (center < s0_1)
+    return false;
+  data += 2 * scorescols;
+  const unsigned char s01 = *data;
+  if (center < s01)
+    return false;
+  data--;
+  const unsigned char s_11 = *data;
+  if (center < s_11)
+    return false;
+  data += 2;
+  const unsigned char s11 = *data;
+  if (center < s11)
+    return false;
+  data -= 2 * scorescols;
+  const unsigned char s1_1 = *data;
+  if (center < s1_1)
+    return false;
+  data -= 2;
+  const unsigned char s_1_1 = *data;
+  if (center < s_1_1)
+    return false;
+
+  //对相等情况的特殊处理
+  // reject neighbor maxima
+  std::vector<int> delta;
+  // put together a list of 2d-offsets to where the maximum is also reached
+  if (center == s_1_1)
+  {
+    delta.push_back(-1);
+    delta.push_back(-1);
+  }
+  if (center == s0_1)
+  {
+    delta.push_back(0);
+    delta.push_back(-1);
+  }
+  if (center == s1_1)
+  {
+    delta.push_back(1);
+    delta.push_back(-1);
+  }
+  if (center == s_10)
+  {
+    delta.push_back(-1);
+    delta.push_back(0);
+  }
+  if (center == s10)
+  {
+    delta.push_back(1);
+    delta.push_back(0);
+  }
+  if (center == s_11)
+  {
+    delta.push_back(-1);
+    delta.push_back(1);
+  }
+  if (center == s01)
+  {
+    delta.push_back(0);
+    delta.push_back(1);
+  }
+  if (center == s11)
+  {
+    delta.push_back(1);
+    delta.push_back(1);
+  }
+  const unsigned int deltasize = (unsigned int)delta.size();
+  if (deltasize != 0)
+  {
+    // in this case, we have to analyze the situation more carefully:
+    // the values are gaussian blurred and then we really decide
+    data = scores.ptr() + y_layer * scorescols + x_layer;
+    int smoothedcenter = 4 * center + 2 * (s_10 + s10 + s0_1 + s01) + s_1_1 + s1_1 + s_11 + s11;
+    for (unsigned int i = 0; i < deltasize; i += 2)
+    {
+      data = scores.ptr() + (y_layer - 1 + delta[i + 1]) * scorescols + x_layer + delta[i] - 1;
+      int othercenter = *data;
+      data++;
+      othercenter += 2 * (*data);
+      data++;
+      othercenter += *data;
+      data += scorescols;
+      othercenter += 2 * (*data);
+      data--;
+      othercenter += 4 * (*data);
+      data--;
+      othercenter += 2 * (*data);
+      data += scorescols;
+      othercenter += *data;
+      data++;
+      othercenter += 2 * (*data);
+      data++;
+      othercenter += *data;
+      if (othercenter > smoothedcenter)
+        return false;
+    }
+  }
+  return true;
+}
+
+
 
 
 

@@ -20,4 +20,6 @@
 #include "GlobalFunctions.cuh"
 
 
+
+
 #endif /* BRISKLAYERONE_CUH_ */

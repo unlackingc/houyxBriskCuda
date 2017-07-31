@@ -424,6 +424,9 @@ BriskLayerOne::halfsample(const PtrStepSzb& srcimg, PtrStepSzb& dstimg)
   resize2(srcimg, dstimg );
 }
 
+/***
+ * todo: 可以考虑GPU加速
+ */
 inline void
 BriskLayerOne::twothirdsample(const PtrStepSzb& srcimg, PtrStepSzb& dstimg)
 {
