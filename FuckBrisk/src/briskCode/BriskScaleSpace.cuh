@@ -1,16 +1,616 @@
-
-/**
- * Copyright 1993-2012 NVIDIA Corporation.  All rights reserved.
+/*
+ * BriskScaleSpace.cuh
  *
- * Please refer to the NVIDIA end user license agreement (EULA) associated
- * with this source code for terms and conditions that govern your use of
- * this software. Any use, reproduction, disclosure, or distribution of
- * this software and related documentation outside the terms of the EULA
- * is strictly prohibited.
+ *  Created on: 2017年7月31日
+ *      Author: houyx
  */
 
+#ifndef BRISKSCALESPACE_CUH_
+#define BRISKSCALESPACE_CUH_
 
-#include "BriskScaleSpace.cuh"
+#include "../libsrc/AgastCuda/AgastCuda.cuh"
+
+//class BriskLayerOne;
+
+class BriskLayerOne
+{
+
+public:
+
+  struct CommonParams
+  {
+  static const int HALFSAMPLE = 0;
+  static const int TWOTHIRDSAMPLE = 1;
+  };
+
+  Agast agast;
+  PtrStepSzb img_;
+  PtrStepSzi scores_;
+
+  //中间值数组
+  short2* locTemp;
+
+  float scale_;
+  float offset_;
+
+    // accessors
+    __device__ __host__ inline const PtrStepSzb&
+    img() const
+    {
+      return img_;
+    }
+
+    __device__ __host__ inline const PtrStepSzi&
+    scores() const
+    {
+      return scores_;
+    }
+
+    __device__ __host__ inline float
+    scale() const
+    {
+      return scale_;
+    }
+
+    __device__ __host__ inline float
+    offset() const
+    {
+      return offset_;
+    }
+
+  int
+  getAgastPoints(int threshold, short2* keypoints, float* scores);
+
+  __device__ inline int
+  getAgastScore(const int x, const int y, int threshold) const;
+
+  __device__ inline int
+  getAgastScore_5_8(const int x,const int y, int threshold) const;
+
+  __device__ inline int
+  getAgastScore(float xf, float yf, int threshold_in, float scale_in = 1.0f) const;
+
+  __device__ inline int
+  value(const PtrStepSzi mat, float xf, float yf, float scale_in) const;
+
+  __host__ void resize2( const PtrStepSzb& srcimg, PtrStepSzb& dstimg );
+
+  __host__ void resize3_2( const PtrStepSzb& srcimg, PtrStepSzb& dstimg );
+
+  __host__ inline void
+  halfsample(const PtrStepSzb& srcimg, PtrStepSzb& dstimg);
+
+  __host__ inline void
+  twothirdsample(const PtrStepSzb& srcimg, PtrStepSzb& dstimg);
+
+  BriskLayerOne(const PtrStepSzb& img_in, float scale = 1.0f, float offset = 0.0f);
+
+  BriskLayerOne(const BriskLayerOne& layer, int mode);
+
+};
+
+
+class BriskScaleSpace
+{
+public:
+  // construct telling the octaves number:
+  BriskScaleSpace(int _octaves = 3);
+  ~BriskScaleSpace()
+  {
+
+  }
+
+  // construct the image pyramids
+  void
+  constructPyramid(const PtrStepSzb& image);
+
+  // get Keypoints
+  void
+  getKeypoints(const int threshold_, float2* keypoints, float* kpSize, float* kpScore);
+
+  // nonmax suppression:
+  __device__ inline bool
+  isMax2D(BriskLayerOne* layers, const int layer, const int x_layer, const int y_layer);
+  // 1D (scale axis) refinement:
+  __device__ inline float
+  refine1D(const float s_05, const float s0, const float s05, float& max) const; // around octave
+  __device__ inline float
+  refine1D_1(const float s_05, const float s0, const float s05, float& max) const; // around intra
+  __device__ inline float
+  refine1D_2(const float s_05, const float s0, const float s05, float& max) const; // around octave 0 only
+  // 2D maximum refinement:
+  __device__ inline float
+  subpixel2D(const int s_0_0, const int s_0_1, const int s_0_2, const int s_1_0, const int s_1_1, const int s_1_2,
+             const int s_2_0, const int s_2_1, const int s_2_2, float& delta_x, float& delta_y) const;
+
+  //todo: 决定执行的地方？ host? device?因为涉及到上下层
+  // 3D maximum refinement centered around (x_layer,y_layer)
+  __device__ inline float
+  refine3D(BriskLayerOne* layers,const int layer, const int x_layer, const int y_layer, float& x, float& y, float& scale, bool& ismax) const;
+
+  // interpolated score access with recalculation when needed:
+  __device__ inline int
+  getScoreAbove(BriskLayerOne* layers,const int layer, const int x_layer, const int y_layer) const;
+  __device__ inline int
+  getScoreBelow(BriskLayerOne* layers,const int layer, const int x_layer, const int y_layer) const;
+
+  // return the maximum of score patches above or below
+  __device__ inline float
+  getScoreMaxAbove(BriskLayerOne* layers,const int layer, const int x_layer, const int y_layer, const int threshold, bool& ismax,
+                   float& dx, float& dy) const;
+  __device__ inline float
+  getScoreMaxBelow(BriskLayerOne* layers,const int layer, const int x_layer, const int y_layer, const int threshold, bool& ismax,
+                   float& dx, float& dy) const;
+
+  // the image pyramids:
+  int layers_;
+  BriskLayerOne pyramid_[8];
+
+
+  //getkeypoint use
+  short2* kpsLoc[8];
+  int kpsCount[8];
+  int kpsCountAfter[8];
+
+  // some constant parameters:
+  static const float safetyFactor_;
+  static const float basicSize_;
+};
+
+__global__ void refineKernel1( BriskScaleSpace space,float2* keypoints, float* kpSize, float* kpScore,const int threshold_, int whichLayer );
+
+
+__global__ void refineKernel2( BriskScaleSpace space,float2* keypoints, float* kpSize, float* kpScore,const int threshold_ );
+
+
+
+class BRISK_Impl
+{
+public:
+    explicit BRISK_Impl(int thresh=30, int octaves=3, float patternScale=1.0f);
+    // custom setup
+    explicit BRISK_Impl(const std::vector<float> &radiusList, const std::vector<int> &numberList,
+        float dMax=5.85f, float dMin=8.2f, const std::vector<int> indexChange=std::vector<int>());
+
+    virtual ~BRISK_Impl();
+
+
+    // call this to generate the kernel:
+    // circle of radius r (pixels), with n points;
+    // short pairings with dMax, long pairings with dMin
+    void generateKernel(const std::vector<float> &radiusList,
+        const std::vector<int> &numberList, float dMax=5.85f, float dMin=8.2f,
+        const std::vector<int> &indexChange=std::vector<int>());
+
+/*    void detectAndCompute( InputArray image, InputArray mask,
+                     CV_OUT std::vector<KeyPoint>& keypoints,
+                     OutputArray descriptors,
+                     bool useProvidedKeypoints );*/
+
+protected:
+
+/*    void computeKeypointsNoOrientation(InputArray image, InputArray mask, std::vector<KeyPoint>& keypoints) const;
+    void computeDescriptorsAndOrOrientation(InputArray image, InputArray mask, std::vector<KeyPoint>& keypoints,
+                                       OutputArray descriptors, bool doDescriptors, bool doOrientation,
+                                       bool useProvidedKeypoints) const;*/
+
+    // Feature parameters
+    int threshold;
+    int octaves;
+
+    // some helper structures for the Brisk pattern representation
+    struct BriskPatternPoint{
+        float x;         // x coordinate relative to center
+        float y;         // x coordinate relative to center
+        float sigma;     // Gaussian smoothing sigma
+    };
+    struct BriskShortPair{
+        unsigned int i;  // index of the first pattern point
+        unsigned int j;  // index of other pattern point
+    };
+    struct BriskLongPair{
+        unsigned int i;  // index of the first pattern point
+        unsigned int j;  // index of other pattern point
+        int weighted_dx; // 1024.0/dx
+        int weighted_dy; // 1024.0/dy
+    };
+/*    inline int smoothedIntensity(const cv::Mat& image,
+                const cv::Mat& integral,const float key_x,
+                const float key_y, const unsigned int scale,
+                const unsigned int rot, const unsigned int point) const;*/
+    // pattern properties
+    BriskPatternPoint* patternPoints_;     //[i][rotation][scale]
+    unsigned int points_;                 // total number of collocation points
+    float* scaleList_;                     // lists the scaling per scale index [scale]
+    unsigned int* sizeList_;             // lists the total pattern size per scale index [scale]
+    static const unsigned int scales_;    // scales discretization
+    static const float scalerange_;     // span of sizes 40->4 Octaves - else, this needs to be adjusted...
+    static const unsigned int n_rot_;    // discretization of the rotation look-up
+
+    // pairs
+    int strings_;                        // number of uchars the descriptor consists of
+    float dMax_;                         // short pair maximum distance
+    float dMin_;                         // long pair maximum distance
+    BriskShortPair* shortPairs_;         // d<_dMax
+    BriskLongPair* longPairs_;             // d>_dMin
+    unsigned int noShortPairs_;         // number of shortParis
+    unsigned int noLongPairs_;             // number of longParis
+
+    // general
+    static const float basicSize_;
+};
+
+
+const float BRISK_Impl::basicSize_ = 12.0f;
+const unsigned int BRISK_Impl::scales_ = 64;
+const float BRISK_Impl::scalerange_ = 30.f; // 40->4 Octaves - else, this needs to be adjusted...
+const unsigned int BRISK_Impl::n_rot_ = 1024; // discretization of the rotation look-up
+
+const float BriskScaleSpace::safetyFactor_ = 1.0f;
+const float BriskScaleSpace::basicSize_ = 12.0f;
+
+
+#ifndef CUDA_CHECK_RETURN
+  #define CUDA_CHECK_RETURN(value) CheckCudaErrorAux(__FILE__,__LINE__, #value, value)
+#endif
+
+
+//mark
+
+
+/***
+ * 使用现有img创造一个层，适用于copy
+ * @param img_in
+ * @param scale_in
+ * @param offset_in
+ */
+// construct a layer
+BriskLayerOne::BriskLayerOne(const PtrStepSzb& img_in, float scale_in, float offset_in):agast(img_.step)
+{
+  img_ = img_in;
+
+  int* scoreData;
+  //PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
+  scores_ = PtrStepSzi(1,true, img_.rows, img_.cols, scoreData, img_.cols);
+  //scores_ = cv::Mat_<uchar>::zeros(img_in.rows, img_in.cols);
+  // attention: this means that the passed image reference must point to persistent memory
+  scale_ = scale_in;
+  offset_ = offset_in;
+
+
+  newArray( locTemp, maxPointNow, true );
+  // create an agast detector
+  //agast = Agast(img_.step);
+  /*  makeAgastOffsets(pixel_5_8_, (int)img_.step, AgastFeatureDetector::AGAST_5_8);
+  makeAgastOffsets(pixel_9_16_, (int)img_.step, AgastFeatureDetector::OAST_9_16);*/
+}
+
+
+/***
+ * 降采样出一个新层
+ * @param layer
+ * @param mode
+ */
+// derive a layer
+BriskLayerOne::BriskLayerOne(const BriskLayerOne& layer, int mode):  agast((mode == CommonParams::HALFSAMPLE)?layer.img().cols / 2:2 * (layer.img().cols / 3))
+{
+  if (mode == CommonParams::HALFSAMPLE)
+  {
+    //img_.create(layer.img().rows / 2, layer.img().cols / 2, CV_8U);
+
+    unsigned char* imgData;
+    //PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
+    img_ = PtrStepSzb(1,false, layer.img().rows / 2, layer.img().cols / 2, imgData, layer.img().cols / 2);
+
+    halfsample(layer.img(), img_);
+
+    scale_ = layer.scale() * 2;
+    offset_ = 0.5f * scale_ - 0.5f;
+  }
+  else
+  {
+    //img_.create(2 * (layer.img().rows / 3), 2 * (layer.img().cols / 3), CV_8U);
+
+    unsigned char* imgData;
+    //PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
+    img_ = PtrStepSzb(1,false, 2 * (layer.img().rows / 3), 2 * (layer.img().cols / 3), imgData, 2 * (layer.img().cols / 3));
+
+    twothirdsample(layer.img(), img_);
+    scale_ = layer.scale() * 1.5f;
+    offset_ = 0.5f * scale_ - 0.5f;
+  }
+
+  int* scoreData;
+  //PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
+  scores_ = PtrStepSzi(1,true, img_.rows, img_.cols, scoreData, img_.cols);
+  newArray( locTemp, maxPointNow, false );
+  //agast = Agast(img_.step);
+}
+/***
+ * changed
+ */
+int
+BriskLayerOne::getAgastPoints(int threshold, short2* keypoints, float* scores)
+{
+  //oast_9_16_->setThreshold(threshold);
+  //oast_9_16_->detect(img_, keypoints);
+
+  //__CV_CUDA_HOST_DEVICE__ PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
+/*  int* scoreData;
+
+  //PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
+  PtrStepSzi scores(true, img_.rows, img_.cols, scoreData, img_.cols);
+
+  short2* loc;
+  newArray( loc, 3000, true );
+
+  float* response;//todo: delete
+  newArray( response, 3000, false );*/
+
+  //int detectMe1( PtrStepSzb image, short2* keyPoints, PtrStepSzi scores, short2* loc, float* response, int threshold=10, int maxPoints=5000, bool ifNoMaxSup = true);
+
+  return detectMe1( img_, locTemp, scores_, keypoints, scores, threshold );
+  //return num;
+  // also write scores
+  //const size_t num = keypoints.size();
+
+/*  for (size_t i = 0; i < num; i++)
+    scores_((int)keypoints[i].pt.y, (int)keypoints[i].pt.x) = saturate_cast<unsigned char>(keypoints[i].response);*/
+  //scores_ = scores;
+}
+
+/***
+ * 获取一个点的score
+ * @param x
+ * @param y
+ * @param threshold
+ * @return
+ */
+__device__ inline int
+BriskLayerOne::getAgastScore(const int x,const int y, int threshold) const
+{
+  if (x < 3 || y < 3)
+    return 0;
+  if (x >= img_.cols - 3 || y >= img_.rows - 3)
+    return 0;
+  return scores_(y, x);
+  /*return score;
+
+  if (score > 2) //todo: 优化
+  {
+    return score;
+  }
+  score = (unsigned char)agast_cornerScore<AgastFeatureDetector::OAST_9_16>(&img_.at<unsigned char>(y, x), pixel_9_16_, threshold - 1);
+  if (score < threshold)
+    score = 0;
+  return score;*/
+}
+
+
+/***
+ * 获取5_8算法下一个点的score
+ * @param x
+ * @param y
+ * @param threshold
+ * @return
+ */
+__device__ inline int
+BriskLayerOne::getAgastScore_5_8(const int x,const int y, int threshold) const
+{
+  if (x < 2 || y < 2)
+    return 0;
+  if (x >= img_.cols - 2 || y >= img_.rows - 2)
+    return 0;
+  int score = agast.agast_cornerScore_5_8(&img_(y, x), threshold - 1);
+  if (score < threshold)
+    score = 0;
+  return score;
+}
+
+
+/***
+ * 获取非整点的score,其实就是4个点的加权平均
+ * @param xf
+ * @param yf
+ * @param threshold_in
+ * @param scale_in
+ * @return
+ */
+__device__ inline int
+BriskLayerOne::getAgastScore(float xf, float yf, int threshold_in, float scale_in) const
+{
+  if (scale_in <= 1.0f)
+  {
+    // just do an interpolation inside the layer
+    const int x = int(xf);
+    const float rx1 = xf - float(x);
+    const float rx = 1.0f - rx1;
+    const int y = int(yf);
+    const float ry1 = yf - float(y);
+    const float ry = 1.0f - ry1;
+
+    return (unsigned char)(rx * ry * getAgastScore(x, y, threshold_in) + rx1 * ry * getAgastScore(x + 1, y, threshold_in)
+           + rx * ry1 * getAgastScore(x, y + 1, threshold_in) + rx1 * ry1 * getAgastScore(x + 1, y + 1, threshold_in));
+  }
+  else
+  {
+    // this means we overlap area smoothing
+    const float halfscale = scale_in / 2.0f;
+
+    //这特么在搞啥？有病？
+    // get the scores first:
+    for (int x = int(xf - halfscale); x <= int(xf + halfscale + 1.0f); x++)
+    {
+      for (int y = int(yf - halfscale); y <= int(yf + halfscale + 1.0f); y++)
+      {
+        getAgastScore(x, y, threshold_in);
+      }
+    }
+    // get the smoothed value
+    return value(scores_, xf, yf, scale_in);
+  }
+}
+
+//可以直接移植
+/***
+ * 取一定范围内的亮度平滑值？这函数又没几个人调用，我也是服气的
+ * @param mat
+ * @param xf
+ * @param yf
+ * @param scale_in
+ * @return
+ */
+// access gray values (smoothed/interpolated)
+/***
+ * 这里认为图像是连续的
+ */
+__device__ inline int
+BriskLayerOne::value(const PtrStepSzi mat, float xf, float yf, float scale_in) const
+{
+  //CV_Assert(!mat.empty());
+  // get the position
+  const int x = (xf);
+  const int y = (yf);
+  const PtrStepSzi& image = mat;
+  const int& imagecols = image.cols;
+
+  // get the sigma_half:
+  const float sigma_half = scale_in / 2;
+  const float area = 4.0f * sigma_half * sigma_half;
+  // calculate output:
+  int ret_val;
+  if (sigma_half < 0.5)
+  {
+  //interpolation multipliers:
+  const int r_x = (int)((xf - x) * 1024);
+  const int r_y = (int)((yf - y) * 1024);
+  const int r_x_1 = (1024 - r_x);
+  const int r_y_1 = (1024 - r_y);
+  const int* ptr = (image.ptr() + x + y * imagecols);//may raise: uchar to int
+  // just interpolate:
+  ret_val = (r_x_1 * r_y_1 * int(*ptr));
+  ptr++;
+  ret_val += (r_x * r_y_1 * int(*ptr));
+  ptr += imagecols;
+  ret_val += (r_x * r_y * int(*ptr));
+  ptr--;
+  ret_val += (r_x_1 * r_y * int(*ptr));
+  return 0xFF & ((ret_val + 512) / 1024 / 1024);
+  }
+
+  // this is the standard case (simple, not speed optimized yet):
+
+  // scaling:
+  const int scaling = (int)(4194304.0f / area);
+  const int scaling2 = (int)(float(scaling) * area / 1024.0f);
+
+  // calculate borders
+  const float x_1 = xf - sigma_half;
+  const float x1 = xf + sigma_half;
+  const float y_1 = yf - sigma_half;
+  const float y1 = yf + sigma_half;
+
+  const int x_left = int(x_1 + 0.5);
+  const int y_top = int(y_1 + 0.5);
+  const int x_right = int(x1 + 0.5);
+  const int y_bottom = int(y1 + 0.5);
+
+  // overlap area - multiplication factors:
+  const float r_x_1 = float(x_left) - x_1 + 0.5f;
+  const float r_y_1 = float(y_top) - y_1 + 0.5f;
+  const float r_x1 = x1 - float(x_right) + 0.5f;
+  const float r_y1 = y1 - float(y_bottom) + 0.5f;
+  const int dx = x_right - x_left - 1;
+  const int dy = y_bottom - y_top - 1;
+  const int A = (int)((r_x_1 * r_y_1) * scaling);
+  const int B = (int)((r_x1 * r_y_1) * scaling);
+  const int C = (int)((r_x1 * r_y1) * scaling);
+  const int D = (int)((r_x_1 * r_y1) * scaling);
+  const int r_x_1_i = (int)(r_x_1 * scaling);
+  const int r_y_1_i = (int)(r_y_1 * scaling);
+  const int r_x1_i = (int)(r_x1 * scaling);
+  const int r_y1_i = (int)(r_y1 * scaling);
+
+  // now the calculation:
+  const int* ptr = (image.ptr() + x_left + imagecols * y_top);
+  // first row:
+  ret_val = A * int(*ptr);
+  ptr++;
+  const int* end1 = ptr + dx;
+  for (; ptr < end1; ptr++)
+  {
+  ret_val += r_y_1_i * int(*ptr);
+  }
+  ret_val += B * int(*ptr);
+  // middle ones:
+  ptr += imagecols - dx - 1;
+  const int* end_j = ptr + dy * imagecols;
+  for (; ptr < end_j; ptr += imagecols - dx - 1)
+  {
+  ret_val += r_x_1_i * int(*ptr);
+  ptr++;
+  const int* end2 = ptr + dx;
+  for (; ptr < end2; ptr++)
+  {
+    ret_val += int(*ptr) * scaling;
+  }
+  ret_val += r_x1_i * int(*ptr);
+  }
+  // last row:
+  ret_val += D * int(*ptr);
+  ptr++;
+  const int* end3 = ptr + dx;//may raise unchar to int
+  for (; ptr < end3; ptr++)
+  {
+  ret_val += r_y1_i * int(*ptr);
+  }
+  ret_val += C * int(*ptr);
+
+  return 0xFF & ((ret_val + scaling2 / 2) / scaling2 / 1024);
+}
+
+
+/***
+ * 两个降采样
+ * @param srcimg
+ * @param dstimg
+ */
+// half sampling
+void BriskLayerOne::resize2( const PtrStepSzb& srcimg, PtrStepSzb& dstimg )
+{
+  return;
+}
+
+void BriskLayerOne::resize3_2( const PtrStepSzb& srcimg, PtrStepSzb& dstimg )
+{
+  return;
+}
+
+inline void
+BriskLayerOne::halfsample(const PtrStepSzb& srcimg, PtrStepSzb& dstimg)
+{
+  // make sure the destination image is of the right size:
+  assert(srcimg.cols / 2 == dstimg.cols);
+  assert(srcimg.rows / 2 == dstimg.rows);
+
+  // handle non-SSE case
+  resize2(srcimg, dstimg );
+}
+
+/***
+ * todo: 可以考虑GPU加速
+ */
+inline void
+BriskLayerOne::twothirdsample(const PtrStepSzb& srcimg, PtrStepSzb& dstimg)
+{
+  // make sure the destination image is of the right size:
+  assert((srcimg.cols / 3) * 2 == dstimg.cols);
+  assert((srcimg.rows / 3) * 2 == dstimg.rows);
+
+  resize3_2(srcimg, dstimg);
+}
+
+//wangwang
 
 // construct the image pyramids
 void
@@ -53,33 +653,33 @@ BriskScaleSpace::getKeypoints(const int threshold_, float2* keypoints, float* kp
   // go through the octaves and intra layers and calculate agast corner scores:
   for (int i = 0; i < layers_; i++)
   {
-	  newArray( kpsLoc[i], maxPointNow, false   );
+    newArray( kpsLoc[i], maxPointNow, false   );
     // call OAST16_9 without nms
-	  BriskLayerOne& l = pyramid_[i];
-	  kpsCount[i] = l.getAgastPoints(safeThreshold_, kpsLoc[i],scoreTemp); //todo: 并行化
-	  maxLayersPoints = kpsCount[i] > maxLayersPoints? kpsCount[i]: maxLayersPoints;
+    BriskLayerOne& l = pyramid_[i];
+    kpsCount[i] = l.getAgastPoints(safeThreshold_, kpsLoc[i],scoreTemp); //todo: 并行化
+    maxLayersPoints = kpsCount[i] > maxLayersPoints? kpsCount[i]: maxLayersPoints;
   }
 
   if (layers_ == 1)
   {
 
-	//todo: need a global kernel,optmize kernal gird and block
+  //todo: need a global kernel,optmize kernal gird and block
     // just do a simple 2d subpixel refinement...
     //const size_t num = agastPoints[0].size();
 
-	void* counter_ptr;
-	cudaGetSymbolAddress(&counter_ptr, g_counter1) ;
+  void* counter_ptr;
+  cudaGetSymbolAddress(&counter_ptr, g_counter1) ;
 
-	cudaMemsetAsync(counter_ptr, 0, sizeof(unsigned int));
+  cudaMemsetAsync(counter_ptr, 0, sizeof(unsigned int));
 
     refineKernel1<<<kpsCount[0]/(32*4)+1,32*4,0>>>(  *this,  keypoints,  kpSize,  kpScore, threshold_, 0 );
 
 
-	cudaGetLastError() ;//todo: cudaSafeCall
+  cudaGetLastError() ;//todo: cudaSafeCall
 
-	cudaMemcpyAsync(&kpsCountAfter[0], counter_ptr, sizeof(unsigned int), cudaMemcpyDeviceToHost) ;//todo: cudaSafeCall
+  cudaMemcpyAsync(&kpsCountAfter[0], counter_ptr, sizeof(unsigned int), cudaMemcpyDeviceToHost) ;//todo: cudaSafeCall
 
-	cudaStreamSynchronize(NULL) ;//todo: cudaSafeCall
+  cudaStreamSynchronize(NULL) ;//todo: cudaSafeCall
 
    /* for (size_t n = 0; n < num; n++)
     {
@@ -113,8 +713,8 @@ BriskScaleSpace::getKeypoints(const int threshold_, float2* keypoints, float* kp
 
   float x, y, scale, score;
 
-	void* counter_ptr;
-	cudaGetSymbolAddress(&counter_ptr, g_counter1) ;
+  void* counter_ptr;
+  cudaGetSymbolAddress(&counter_ptr, g_counter1) ;
 
     cudaMemsetAsync(counter_ptr, 0, sizeof(unsigned int));
 
@@ -126,11 +726,11 @@ BriskScaleSpace::getKeypoints(const int threshold_, float2* keypoints, float* kp
     refineKernel2<<<grid,32,0>>>(  *this,  keypoints,  kpSize,  kpScore, threshold_ );
 
 
-	cudaGetLastError() ;//todo: cudaSafeCall
+  cudaGetLastError() ;//todo: cudaSafeCall
 
-	cudaMemcpyAsync(&kpsCountAfter[0], counter_ptr, sizeof(unsigned int), cudaMemcpyDeviceToHost) ;//todo: cudaSafeCall
+  cudaMemcpyAsync(&kpsCountAfter[0], counter_ptr, sizeof(unsigned int), cudaMemcpyDeviceToHost) ;//todo: cudaSafeCall
 
-	cudaStreamSynchronize(NULL) ;//todo: cudaSafeCall
+  cudaStreamSynchronize(NULL) ;//todo: cudaSafeCall
 
 /*  for (int i = 0; i < layers_; i++)
   {
@@ -408,49 +1008,52 @@ BriskScaleSpace::isMax2D(BriskLayerOne* layers,const int layer, const int x_laye
 
   //对相等情况的特殊处理
   // reject neighbor maxima
-  std::vector<int> delta;
+  int delta[20];
+  int deltaIndex = 0;
   // put together a list of 2d-offsets to where the maximum is also reached
   if (center == s_1_1)
   {
-    delta.push_back(-1);
-    delta.push_back(-1);
+    //delta[deltaIndex++] = -1
+    delta[deltaIndex++] = -1;
+    delta[deltaIndex++] = -1;
   }
   if (center == s0_1)
   {
-    delta.push_back(0);
-    delta.push_back(-1);
+    delta[deltaIndex++] = 0;
+    delta[deltaIndex++] = -1;
   }
   if (center == s1_1)
   {
-    delta.push_back(1);
-    delta.push_back(-1);
+    delta[deltaIndex++] = 1;
+    delta[deltaIndex++] = -1;
   }
   if (center == s_10)
   {
-    delta.push_back(-1);
-    delta.push_back(0);
+    delta[deltaIndex++] = -1;
+    delta[deltaIndex++] = 0;
   }
   if (center == s10)
   {
-    delta.push_back(1);
-    delta.push_back(0);
+    delta[deltaIndex++] = 1;
+    delta[deltaIndex++] = 0;
   }
   if (center == s_11)
   {
-    delta.push_back(-1);
-    delta.push_back(1);
+    delta[deltaIndex++] = -1;
+    delta[deltaIndex++] = 1;
   }
   if (center == s01)
   {
-    delta.push_back(0);
-    delta.push_back(1);
+    delta[deltaIndex++] = 0;
+    delta[deltaIndex++] = 1;
   }
   if (center == s11)
   {
-    delta.push_back(1);
-    delta.push_back(1);
+    delta[deltaIndex++] = 1;
+    delta[deltaIndex++] = 1;
   }
-  const unsigned int deltasize = (unsigned int)delta.size();
+  int deltasize = deltaIndex;
+
   if (deltasize != 0)
   {
     // in this case, we have to analyze the situation more carefully:
@@ -531,21 +1134,21 @@ BriskScaleSpace::refine3D(BriskLayerOne* layers,const int layer, const int x_lay
       int s_0_0 = l.getAgastScore_5_8(x_layer - 1, y_layer - 1, 1);
       max_below = s_0_0;
       int s_1_0 = l.getAgastScore_5_8(x_layer, y_layer - 1, 1);
-      max_below = std::max(s_1_0, max_below);
+      max_below = maxMe(s_1_0, max_below);
       int s_2_0 = l.getAgastScore_5_8(x_layer + 1, y_layer - 1, 1);
-      max_below = std::max(s_2_0, max_below);
+      max_below = maxMe(s_2_0, max_below);
       int s_2_1 = l.getAgastScore_5_8(x_layer + 1, y_layer, 1);
-      max_below = std::max(s_2_1, max_below);
+      max_below = maxMe(s_2_1, max_below);
       int s_1_1 = l.getAgastScore_5_8(x_layer, y_layer, 1);
-      max_below = std::max(s_1_1, max_below);
+      max_below = maxMe(s_1_1, max_below);
       int s_0_1 = l.getAgastScore_5_8(x_layer - 1, y_layer, 1);
-      max_below = std::max(s_0_1, max_below);
+      max_below = maxMe(s_0_1, max_below);
       int s_0_2 = l.getAgastScore_5_8(x_layer - 1, y_layer + 1, 1);
-      max_below = std::max(s_0_2, max_below);
+      max_below = maxMe(s_0_2, max_below);
       int s_1_2 = l.getAgastScore_5_8(x_layer, y_layer + 1, 1);
-      max_below = std::max(s_1_2, max_below);
+      max_below = maxMe(s_1_2, max_below);
       int s_2_2 = l.getAgastScore_5_8(x_layer + 1, y_layer + 1, 1);
-      max_below = std::max(s_2_2, max_below);
+      max_below = maxMe(s_2_2, max_below);
 
       max_below_float = subpixel2D(s_0_0, s_0_1, s_0_2, s_1_0, s_1_1, s_1_2, s_2_0, s_2_1, s_2_2, delta_x_below,
                                    delta_y_below);
@@ -575,10 +1178,10 @@ BriskScaleSpace::refine3D(BriskLayerOne* layers,const int layer, const int x_lay
     // calculate the relative scale (1D maximum):
     if (layer == 0)
     {
-      scale = refine1D_2(max_below_float, std::max(float(center), max_layer), max_above, max);
+      scale = refine1D_2(max_below_float, maxMe(float(center), max_layer), max_above, max);
     }
     else
-      scale = refine1D(max_below_float, std::max(float(center), max_layer), max_above, max);
+      scale = refine1D(max_below_float, maxMe(float(center), max_layer), max_above, max);
 
     if (scale > 1.0)
     {
@@ -632,7 +1235,7 @@ BriskScaleSpace::refine3D(BriskLayerOne* layers,const int layer, const int x_lay
                                  delta_y_layer);
 
     // calculate the relative scale (1D maximum):
-    scale = refine1D_1(max_below, std::max(float(center), max_layer), max_above, max);
+    scale = refine1D_1(max_below, maxMe(float(center), max_layer), max_above, max);
     if (scale > 1.0)
     {
       // interpolate the position:
@@ -838,7 +1441,7 @@ BriskScaleSpace::getScoreMaxAbove(BriskLayerOne* layers,const int layer, const i
   ismax = true;
   if (returnrefined)
   {
-    return std::max(refined_max, maxval);
+    return maxMe(refined_max, maxval);
   }
   return maxval;
 }
@@ -1038,7 +1641,7 @@ BriskScaleSpace::getScoreMaxBelow(BriskLayerOne* layers, const int layer, const 
   ismax = true;
   if (returnrefined)
   {
-    return std::max(refined_max, max);
+    return maxMe(refined_max, max);
   }
   return max;
 }
@@ -1365,4 +1968,145 @@ BriskScaleSpace::subpixel2D(const int s_0_0, const int s_0_1, const int s_0_2, c
          / 18.0f;
 }
 
+//wangwang1
 
+
+
+__global__ void refineKernel1(BriskScaleSpace space, float2* keypoints,
+    float* kpSize, float* kpScore, const int threshold_, int whichLayer) {
+  const int kpIdx = threadIdx.x + blockIdx.x * blockDim.x;
+
+  const short2& point = space.kpsLoc[whichLayer][kpIdx];
+  // first check if it is a maximum:
+  //非极大值抑制
+  //todo : seems not necessary?
+  if (!space.isMax2D(space.pyramid_, 0, (int) point.x, (int) point.y))
+    return;
+
+  // let's do the subpixel and float scale refinement:
+  BriskLayerOne& l = space.pyramid_[0];
+  int s_0_0 = l.getAgastScore(point.x - 1, point.y - 1, 1);
+  int s_1_0 = l.getAgastScore(point.x, point.y - 1, 1);
+  int s_2_0 = l.getAgastScore(point.x + 1, point.y - 1, 1);
+  int s_2_1 = l.getAgastScore(point.x + 1, point.y, 1);
+  int s_1_1 = l.getAgastScore(point.x, point.y, 1);
+  int s_0_1 = l.getAgastScore(point.x - 1, point.y, 1);
+  int s_0_2 = l.getAgastScore(point.x - 1, point.y + 1, 1);
+  int s_1_2 = l.getAgastScore(point.x, point.y + 1, 1);
+  int s_2_2 = l.getAgastScore(point.x + 1, point.y + 1, 1);
+  float delta_x, delta_y;
+  float max = space.subpixel2D(s_0_0, s_0_1, s_0_2, s_1_0, s_1_1, s_1_2,
+      s_2_0, s_2_1, s_2_2, delta_x, delta_y);
+
+  // store:
+  const unsigned int ind = atomicInc(&g_counter1, (unsigned int) (-1));
+
+  keypoints[ind] = make_float2(float(point.x) + delta_x,
+      float(point.y) + delta_y);
+  kpSize[ind] = space.basicSize_;
+  kpScore[ind] = max;
+  //keypoints.push_back(cv::KeyPoint(float(point.x) + delta_x, float(point.y) + delta_y, basicSize_, -1, max, 0));
+}
+
+__global__ void refineKernel2(BriskScaleSpace space, float2* keypoints,
+    float* kpSize, float* kpScore,const int threshold_) {
+
+  int safeThreshold_ = (int)(threshold_ * space.safetyFactor_);
+  int i = blockIdx.x;
+  float x, y, scale, score;
+
+  const int n = threadIdx.x + blockIdx.y * blockDim.x;  // may cause problem
+
+  if (n >= space.kpsCount[i]) {
+    return;
+  } else {
+    BriskLayerOne& l = space.pyramid_[i];
+    if (i == space.layers_ - 1) {
+      //for (size_t n = 0; n < space.c; n++)
+      // {
+      const short2& point = space.kpsLoc[i][n];
+      // consider only 2D maxima...
+      if (!space.isMax2D(space.pyramid_, i, (int) point.x, (int) point.y))
+        return;
+
+      bool ismax;
+      float dx, dy;
+      space.getScoreMaxBelow(space.pyramid_, i, (int) point.x,
+          (int) point.y,
+          l.getAgastScore(point.x, point.y, safeThreshold_), ismax,
+          dx, dy);
+      if (!ismax)
+        return;
+
+      // get the patch on this layer:
+      int s_0_0 = l.getAgastScore(point.x - 1, point.y - 1, 1);
+      int s_1_0 = l.getAgastScore(point.x, point.y - 1, 1);
+      int s_2_0 = l.getAgastScore(point.x + 1, point.y - 1, 1);
+      int s_2_1 = l.getAgastScore(point.x + 1, point.y, 1);
+      int s_1_1 = l.getAgastScore(point.x, point.y, 1);
+      int s_0_1 = l.getAgastScore(point.x - 1, point.y, 1);
+      int s_0_2 = l.getAgastScore(point.x - 1, point.y + 1, 1);
+      int s_1_2 = l.getAgastScore(point.x, point.y + 1, 1);
+      int s_2_2 = l.getAgastScore(point.x + 1, point.y + 1, 1);
+      float delta_x, delta_y;
+      float max = space.subpixel2D(s_0_0, s_0_1, s_0_2, s_1_0, s_1_1,
+          s_1_2, s_2_0, s_2_1, s_2_2, delta_x, delta_y);
+
+      const unsigned int ind = atomicInc(&g_counter1, (unsigned int) (-1));
+      keypoints[ind] = make_float2(
+          (float(point.x) + delta_x) * l.scale() + l.offset(),//todo: find the meaning of offset
+          (float(point.y) + delta_y) * l.scale() + l.offset());
+      kpSize[ind] = space.basicSize_ * l.scale();
+      kpScore[ind] = max;
+      /*              // store:
+       keypoints.push_back(
+       cv::KeyPoint((float(point.x) + delta_x) * l.scale() + l.offset(),
+       (float(point.y) + delta_y) * l.scale() + l.offset(), basicSize_ * l.scale(), -1, max, i));*/
+      // }
+    } else {
+      // not the last layer:
+      //for (size_t n = 0; n < num; n++)
+      //{
+      const short2& point = space.kpsLoc[i][n];
+
+      // first check if it is a maximum:
+      if (!space.isMax2D(space.pyramid_, i, (int) point.x, (int) point.y))
+        return;
+
+      // let's do the subpixel and float scale refinement:
+      bool ismax = false;
+
+      //可见refine3D是真正判断是否最大的货色
+      score = space.refine3D(space.pyramid_, i, (int) point.x,
+          (int) point.y, x, y, scale, ismax);
+      if (!ismax) {
+        return;
+      }
+
+      //理解这个basicSize的真实含义
+      // finally store the detected keypoint:
+      if (score > float(threshold_)) {
+        const unsigned int ind = atomicInc(&g_counter1,
+            (unsigned int) (-1));
+        keypoints[ind] = make_float2(x, y);
+        kpSize[ind] = space.basicSize_ * scale;
+        kpScore[ind] = score;
+
+        //keypoints.push_back(cv::KeyPoint(x, y, basicSize_ * scale, -1, score, i));
+      }
+    }
+  }
+}
+
+//for (int i = 0; i < layers_; i++)
+//{
+//
+//const size_t num = agastPoints[i].size();
+
+// }
+
+
+
+
+
+#endif /* BRISKSCALESPACE_CUH_ */

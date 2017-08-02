@@ -1,10 +1,10 @@
-#include "GlobalFunctions.cuh"
+#include "BriskScaleSpace.cuh"
 
 __global__ void refineKernel1(BriskScaleSpace space, float2* keypoints,
-		float* kpSize, float* kpScore, int whichLayer) {
+		float* kpSize, float* kpScore, const int threshold_, int whichLayer) {
 	const int kpIdx = threadIdx.x + blockIdx.x * blockDim.x;
 
-	const Short2& point = space.kpsLoc[whichLayer][kpIdx];
+	const short2& point = space.kpsLoc[whichLayer][kpIdx];
 	// first check if it is a maximum:
 	//非极大值抑制
 	//todo : seems not necessary?
@@ -27,7 +27,7 @@ __global__ void refineKernel1(BriskScaleSpace space, float2* keypoints,
 			s_2_0, s_2_1, s_2_2, delta_x, delta_y);
 
 	// store:
-	const unsigned int ind = atomicInc(&g_counter, (unsigned int) (-1));
+	const unsigned int ind = atomicInc(&g_counter1, (unsigned int) (-1));
 
 	keypoints[ind] = make_float2(float(point.x) + delta_x,
 			float(point.y) + delta_y);
@@ -37,7 +37,9 @@ __global__ void refineKernel1(BriskScaleSpace space, float2* keypoints,
 }
 
 __global__ void refineKernel2(BriskScaleSpace space, float2* keypoints,
-		float* kpSize, float* kpScore) {
+		float* kpSize, float* kpScore,const int threshold_) {
+
+	int safeThreshold_ = (int)(threshold_ * space.safetyFactor_);
 	int i = blockIdx.x;
 	float x, y, scale, score;
 
@@ -46,11 +48,11 @@ __global__ void refineKernel2(BriskScaleSpace space, float2* keypoints,
 	if (n >= space.kpsCount[i]) {
 		return;
 	} else {
-		BriskLayerOne& l = pyramid_[i];
-		if (i == layers_ - 1) {
+		BriskLayerOne& l = space.pyramid_[i];
+		if (i == space.layers_ - 1) {
 			//for (size_t n = 0; n < space.c; n++)
 			// {
-			const Short2& point = space.kpsLoc[i][n];
+			const short2& point = space.kpsLoc[i][n];
 			// consider only 2D maxima...
 			if (!space.isMax2D(space.pyramid_, i, (int) point.x, (int) point.y))
 				return;
@@ -78,7 +80,7 @@ __global__ void refineKernel2(BriskScaleSpace space, float2* keypoints,
 			float max = space.subpixel2D(s_0_0, s_0_1, s_0_2, s_1_0, s_1_1,
 					s_1_2, s_2_0, s_2_1, s_2_2, delta_x, delta_y);
 
-			const unsigned int ind = atomicInc(&g_counter, (unsigned int) (-1));
+			const unsigned int ind = atomicInc(&g_counter1, (unsigned int) (-1));
 			keypoints[ind] = make_float2(
 					(float(point.x) + delta_x) * l.scale() + l.offset(),//todo: find the meaning of offset
 					(float(point.y) + delta_y) * l.scale() + l.offset());
@@ -93,7 +95,7 @@ __global__ void refineKernel2(BriskScaleSpace space, float2* keypoints,
 			// not the last layer:
 			//for (size_t n = 0; n < num; n++)
 			//{
-			const Short2& point = space.kpsLoc[i][n];
+			const short2& point = space.kpsLoc[i][n];
 
 			// first check if it is a maximum:
 			if (!space.isMax2D(space.pyramid_, i, (int) point.x, (int) point.y))
@@ -111,8 +113,8 @@ __global__ void refineKernel2(BriskScaleSpace space, float2* keypoints,
 
 			//理解这个basicSize的真实含义
 			// finally store the detected keypoint:
-			if (score > float(space.threshold_)) {
-				const unsigned int ind = atomicInc(&g_counter,
+			if (score > float(threshold_)) {
+				const unsigned int ind = atomicInc(&g_counter1,
 						(unsigned int) (-1));
 				keypoints[ind] = make_float2(x, y);
 				kpSize[ind] = space.basicSize_ * scale;

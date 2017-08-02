@@ -107,6 +107,9 @@ BriskLayerOne::BriskLayerOne(const PtrStepSzb& img_in, float scale_in, float off
   // attention: this means that the passed image reference must point to persistent memory
   scale_ = scale_in;
   offset_ = offset_in;
+
+
+  newArray( locTemp, maxPointNow, true );
   // create an agast detector
   //agast = Agast(img_.step);
   /*  makeAgastOffsets(pixel_5_8_, (int)img_.step, AgastFeatureDetector::AGAST_5_8);
@@ -151,7 +154,7 @@ BriskLayerOne::BriskLayerOne(const BriskLayerOne& layer, int mode):  agast((mode
   int* scoreData;
   //PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
   scores_ = PtrStepSzi(1,true, img_.rows, img_.cols, scoreData, img_.cols);
-
+  newArray( locTemp, maxPointNow, false );
   //agast = Agast(img_.step);
 }
 /***
@@ -177,7 +180,7 @@ BriskLayerOne::getAgastPoints(int threshold, short2* keypoints, float* scores)
 
   //int detectMe1( PtrStepSzb image, short2* keyPoints, PtrStepSzi scores, short2* loc, float* response, int threshold=10, int maxPoints=5000, bool ifNoMaxSup = true);
 
-  return detectMe1( img_, loc, scores_, keypoints, scores, threshold );
+  return detectMe1( img_, locTemp, scores_, keypoints, scores, threshold );
   //return num;
   // also write scores
   //const size_t num = keypoints.size();

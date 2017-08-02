@@ -8,15 +8,22 @@
 #ifndef BRISKSCALESPACE_CUH_
 #define BRISKSCALESPACE_CUH_
 
-#include "BriskLayerOne.cuh"
-#include "GlobalFunctions.cuh"
-
 #include <vector>
 #include <string>
 #include <iostream>
+#include <stdio.h>
+#include <stdlib.h>
+
+#include <cuda.h>
+#include "../cuda_types.hpp"
+#include "../libsrc/FastCuda/FastCuda.h"
+#include "../libsrc/AgastCuda/AgastCuda.cuh"
+
+
 
 //class BriskLayerOne;
 
+__device__ unsigned int g_counter1;
 
 class BriskLayerOne
 {
@@ -33,29 +40,32 @@ public:
 	PtrStepSzb img_;
 	PtrStepSzi scores_;
 
+	//中间值数组
+	short2* locTemp;
+
 	float scale_;
 	float offset_;
 
 	  // accessors
-	  inline const PtrStepSzb&
+	  __device__ __host__ inline const PtrStepSzb&
 	  img() const
 	  {
 	    return img_;
 	  }
 
-	  inline const PtrStepSzi&
+	  __device__ __host__ inline const PtrStepSzi&
 	  scores() const
 	  {
 	    return scores_;
 	  }
 
-	  inline float
+	  __device__ __host__ inline float
 	  scale() const
 	  {
 	    return scale_;
 	  }
 
-	  inline float
+	  __device__ __host__ inline float
 	  offset() const
 	  {
 	    return offset_;
@@ -108,7 +118,6 @@ public:
   void
   getKeypoints(const int threshold_, float2* keypoints, float* kpSize, float* kpScore);
 
-protected:
   // nonmax suppression:
   __device__ inline bool
   isMax2D(BriskLayerOne* layers, const int layer, const int x_layer, const int y_layer);
@@ -149,13 +158,95 @@ protected:
 
 
   //getkeypoint use
-  short2** kpsLoc[8];
+  short2* kpsLoc[8];
   int kpsCount[8];
   int kpsCountAfter[8];
 
   // some constant parameters:
   static const float safetyFactor_;
   static const float basicSize_;
+};
+
+__global__ void refineKernel1( BriskScaleSpace space,float2* keypoints, float* kpSize, float* kpScore,const int threshold_, int whichLayer );
+
+__global__ void refineKernel2( BriskScaleSpace space,float2* keypoints, float* kpSize, float* kpScore,const int threshold_ );
+
+
+
+class BRISK_Impl
+{
+public:
+    explicit BRISK_Impl(int thresh=30, int octaves=3, float patternScale=1.0f);
+    // custom setup
+    explicit BRISK_Impl(const std::vector<float> &radiusList, const std::vector<int> &numberList,
+        float dMax=5.85f, float dMin=8.2f, const std::vector<int> indexChange=std::vector<int>());
+
+    virtual ~BRISK_Impl();
+
+
+    // call this to generate the kernel:
+    // circle of radius r (pixels), with n points;
+    // short pairings with dMax, long pairings with dMin
+    void generateKernel(const std::vector<float> &radiusList,
+        const std::vector<int> &numberList, float dMax=5.85f, float dMin=8.2f,
+        const std::vector<int> &indexChange=std::vector<int>());
+
+/*    void detectAndCompute( InputArray image, InputArray mask,
+                     CV_OUT std::vector<KeyPoint>& keypoints,
+                     OutputArray descriptors,
+                     bool useProvidedKeypoints );*/
+
+protected:
+
+/*    void computeKeypointsNoOrientation(InputArray image, InputArray mask, std::vector<KeyPoint>& keypoints) const;
+    void computeDescriptorsAndOrOrientation(InputArray image, InputArray mask, std::vector<KeyPoint>& keypoints,
+                                       OutputArray descriptors, bool doDescriptors, bool doOrientation,
+                                       bool useProvidedKeypoints) const;*/
+
+    // Feature parameters
+    int threshold;
+    int octaves;
+
+    // some helper structures for the Brisk pattern representation
+    struct BriskPatternPoint{
+        float x;         // x coordinate relative to center
+        float y;         // x coordinate relative to center
+        float sigma;     // Gaussian smoothing sigma
+    };
+    struct BriskShortPair{
+        unsigned int i;  // index of the first pattern point
+        unsigned int j;  // index of other pattern point
+    };
+    struct BriskLongPair{
+        unsigned int i;  // index of the first pattern point
+        unsigned int j;  // index of other pattern point
+        int weighted_dx; // 1024.0/dx
+        int weighted_dy; // 1024.0/dy
+    };
+/*    inline int smoothedIntensity(const cv::Mat& image,
+                const cv::Mat& integral,const float key_x,
+                const float key_y, const unsigned int scale,
+                const unsigned int rot, const unsigned int point) const;*/
+    // pattern properties
+    BriskPatternPoint* patternPoints_;     //[i][rotation][scale]
+    unsigned int points_;                 // total number of collocation points
+    float* scaleList_;                     // lists the scaling per scale index [scale]
+    unsigned int* sizeList_;             // lists the total pattern size per scale index [scale]
+    static const unsigned int scales_;    // scales discretization
+    static const float scalerange_;     // span of sizes 40->4 Octaves - else, this needs to be adjusted...
+    static const unsigned int n_rot_;    // discretization of the rotation look-up
+
+    // pairs
+    int strings_;                        // number of uchars the descriptor consists of
+    float dMax_;                         // short pair maximum distance
+    float dMin_;                         // long pair maximum distance
+    BriskShortPair* shortPairs_;         // d<_dMax
+    BriskLongPair* longPairs_;             // d>_dMin
+    unsigned int noShortPairs_;         // number of shortParis
+    unsigned int noLongPairs_;             // number of longParis
+
+    // general
+    static const float basicSize_;
 };
 
 
