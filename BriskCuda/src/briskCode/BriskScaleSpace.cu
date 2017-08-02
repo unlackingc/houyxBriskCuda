@@ -33,35 +33,56 @@ BriskScaleSpace::constructPyramid(const PtrStepSzb& image)
 
 
 /***
- * todo: keypoint的返回值有待于考察是否需要score,和如何传递
- * 获取特征点的关键函数，包括最大值抑制，插值等等
+ * todo: 加速
  * @param threshold_
  * @param keypoints
  */
 void
-BriskScaleSpace::getKeypoints(const int threshold_, short2* keypoints)
+BriskScaleSpace::getKeypoints(const int threshold_, float2* keypoints, float* kpSize, float* kpScore)
 {
+
+  int maxLayersPoints = 0;
   // assign thresholds
   int safeThreshold_ = (int)(threshold_ * safetyFactor_);
-  std::vector<std::vector<cv::KeyPoint> > agastPoints;
+ // std::vector<std::vector<cv::KeyPoint> > agastPoints;
 
+  float* scoreTemp;
+  newArray( scoreTemp, maxPointNow, false   );
 
-
-  agastPoints.resize(layers_);
+  //agastPoints.resize(layers_);
 
   // go through the octaves and intra layers and calculate agast corner scores:
   for (int i = 0; i < layers_; i++)
   {
+	  newArray( kpsLoc[i], maxPointNow, false   );
     // call OAST16_9 without nms
-    BriskLayer& l = pyramid_[i];
-    l.getAgastPoints(safeThreshold_, agastPoints[i]);
+	  BriskLayerOne& l = pyramid_[i];
+	  kpsCount[i] = l.getAgastPoints(safeThreshold_, kpsLoc[i],scoreTemp); //todo: 并行化
+	  maxLayersPoints = kpsCount[i] > maxLayersPoints? kpsCount[i]: maxLayersPoints;
   }
 
   if (layers_ == 1)
   {
+
+	//todo: need a global kernel,optmize kernal gird and block
     // just do a simple 2d subpixel refinement...
-    const size_t num = agastPoints[0].size();
-    for (size_t n = 0; n < num; n++)
+    //const size_t num = agastPoints[0].size();
+
+	void* counter_ptr;
+	cudaGetSymbolAddress(&counter_ptr, g_counter) ;
+
+	cudaMemsetAsync(counter_ptr, 0, sizeof(unsigned int));
+
+    refineKernel1<<<kpsCount[0]/(32*4)+1,32*4,0>>>(  *this,  keypoints,  kpSize,  kpScore, 0 );
+
+
+	cudaGetLastError() ;//todo: cudaSafeCall
+
+	cudaMemcpyAsync(&kpsCountAfter[0], counter_ptr, sizeof(unsigned int), cudaMemcpyDeviceToHost) ;//todo: cudaSafeCall
+
+	cudaStreamSynchronize(NULL) ;//todo: cudaSafeCall
+
+   /* for (size_t n = 0; n < num; n++)
     {
       const cv::Point2f& point = agastPoints.at(0)[n].pt;
       // first check if it is a maximum:
@@ -70,7 +91,7 @@ BriskScaleSpace::getKeypoints(const int threshold_, short2* keypoints)
         continue;
 
       // let's do the subpixel and float scale refinement:
-      BriskLayer& l = pyramid_[0];
+      BriskLayerOne& l = pyramid_[0];
       int s_0_0 = l.getAgastScore(point.x - 1, point.y - 1, 1);
       int s_1_0 = l.getAgastScore(point.x, point.y - 1, 1);
       int s_2_0 = l.getAgastScore(point.x + 1, point.y - 1, 1);
@@ -86,13 +107,33 @@ BriskScaleSpace::getKeypoints(const int threshold_, short2* keypoints)
       // store:
       keypoints.push_back(cv::KeyPoint(float(point.x) + delta_x, float(point.y) + delta_y, basicSize_, -1, max, 0));
 
-    }
+    }*/
 
     return;
   }
 
   float x, y, scale, score;
-  for (int i = 0; i < layers_; i++)
+
+	void* counter_ptr;
+	cudaGetSymbolAddress(&counter_ptr, g_counter) ;
+
+    cudaMemsetAsync(counter_ptr, 0, sizeof(unsigned int));
+
+    dim3 grid;
+    grid.x = layers_;
+    grid.y = maxLayersPoints/32;//todo optimize
+    //maxLayersPoints
+
+    refineKernel2<<<grid,32,0>>>(  *this,  keypoints,  kpSize,  kpScore, 0 );
+
+
+	cudaGetLastError() ;//todo: cudaSafeCall
+
+	cudaMemcpyAsync(&kpsCountAfter[0], counter_ptr, sizeof(unsigned int), cudaMemcpyDeviceToHost) ;//todo: cudaSafeCall
+
+	cudaStreamSynchronize(NULL) ;//todo: cudaSafeCall
+
+/*  for (int i = 0; i < layers_; i++)
   {
     BriskLayer& l = pyramid_[i];
     const size_t num = agastPoints[i].size();
@@ -160,7 +201,7 @@ BriskScaleSpace::getKeypoints(const int threshold_, short2* keypoints)
         }
       }
     }
-  }
+  }*/
 }
 
 

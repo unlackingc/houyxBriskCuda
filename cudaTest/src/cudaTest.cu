@@ -79,6 +79,31 @@ void VV::testGlobal()
 	changeVal<<<1,size>>>(aInner);
 
 	cudaMemcpy(this,aInner,sizeof(VV),cudaMemcpyDeviceToHost);
+
+
+	int * tempInner;;
+
+	cudaMalloc((void**)&tempInner, sizeof(int) * size);
+	cudaMemset ( tempInner, 0, sizeof(int)*size );
+
+
+
+	getVal<<<1,size>>>(*this,tempInner);
+
+	int tempOuter[size];
+
+	memset( tempOuter, 0, size*sizeof(int) );
+
+	cudaMemcpy(tempOuter,tempInner,sizeof(int)*size,cudaMemcpyDeviceToHost);
+
+
+	for( int i = 0; i < size; i ++ )
+	{
+		cout << "after::\t" << i << "::: " << tempOuter[i] << endl;
+	}
+
+
+	cudaFree(tempInner);
 }
 
 
@@ -101,29 +126,7 @@ int main(void)
 	cout << "begin  sizeof(VV)::\t" << sizeof(VV) << endl;
 
 
-	int * tempInner;;
 
-	cudaMalloc((void**)&tempInner, sizeof(int) * size);
-	cudaMemset ( tempInner, 0, sizeof(int)*size );
-
-
-
-	getVal<<<1,size>>>(a,tempInner);
-
-	int tempOuter[size];
-
-	memset( tempOuter, 0, size*sizeof(int) );
-
-	cudaMemcpy(tempOuter,tempInner,sizeof(int)*size,cudaMemcpyDeviceToHost);
-
-
-	for( int i = 0; i < size; i ++ )
-	{
-		cout << "after::\t" << i << "::: " << tempOuter[i] << endl;
-	}
-
-
-	cudaFree(tempInner);
 	return 0;
 }
 

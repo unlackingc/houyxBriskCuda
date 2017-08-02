@@ -32,6 +32,8 @@
 #include <numeric>
 #include <stdlib.h>
 
+const int maxPointNow = 2000;
+
 static void CheckCudaErrorAux (const char *file, unsigned line, const char *statement, cudaError_t err)
 {
 	if (err == cudaSuccess)
@@ -129,6 +131,14 @@ public:
 				//newArray( T * ptr, int size, bool ifset )
 				newArrayIn(this->data,rows_*cols_,true);
 			  }
+
+	__CV_CUDA_HOST_DEVICE__ PtrStepSz(int isHost, bool ifset_, int rows_, int cols_, T* data_, size_t step_)
+			: PtrStep<T>(data_, step_), cols(cols_), rows(rows_)
+			  {
+				//newArray( T * ptr, int size, bool ifset )
+				newArray(this->data,rows_*cols_,true);
+			  }
+
 
 	template <typename U>
 	explicit PtrStepSz(const PtrStepSz<U>& d) : PtrStep<T>((T*)d.data, d.step), cols(d.cols), rows(d.rows){}

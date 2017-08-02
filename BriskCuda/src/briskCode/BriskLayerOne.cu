@@ -102,7 +102,7 @@ BriskLayerOne::BriskLayerOne(const PtrStepSzb& img_in, float scale_in, float off
 
   int* scoreData;
   //PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
-  scores_ = PtrStepSzi(true, img_.rows, img_.cols, scoreData, img_.cols);
+  scores_ = PtrStepSzi(1,true, img_.rows, img_.cols, scoreData, img_.cols);
   //scores_ = cv::Mat_<uchar>::zeros(img_in.rows, img_in.cols);
   // attention: this means that the passed image reference must point to persistent memory
   scale_ = scale_in;
@@ -128,7 +128,7 @@ BriskLayerOne::BriskLayerOne(const BriskLayerOne& layer, int mode):  agast((mode
 
     unsigned char* imgData;
     //PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
-    img_ = PtrStepSzb(false, layer.img().rows / 2, layer.img().cols / 2, imgData, layer.img().cols / 2);
+    img_ = PtrStepSzb(1,false, layer.img().rows / 2, layer.img().cols / 2, imgData, layer.img().cols / 2);
 
     halfsample(layer.img(), img_);
 
@@ -141,7 +141,7 @@ BriskLayerOne::BriskLayerOne(const BriskLayerOne& layer, int mode):  agast((mode
 
     unsigned char* imgData;
     //PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
-    img_ = PtrStepSzb(false, 2 * (layer.img().rows / 3), 2 * (layer.img().cols / 3), imgData, 2 * (layer.img().cols / 3));
+    img_ = PtrStepSzb(1,false, 2 * (layer.img().rows / 3), 2 * (layer.img().cols / 3), imgData, 2 * (layer.img().cols / 3));
 
     twothirdsample(layer.img(), img_);
     scale_ = layer.scale() * 1.5f;
@@ -150,21 +150,21 @@ BriskLayerOne::BriskLayerOne(const BriskLayerOne& layer, int mode):  agast((mode
 
   int* scoreData;
   //PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
-  scores_ = PtrStepSzi(true, img_.rows, img_.cols, scoreData, img_.cols);
+  scores_ = PtrStepSzi(1,true, img_.rows, img_.cols, scoreData, img_.cols);
 
   //agast = Agast(img_.step);
 }
 /***
  * changed
  */
-void
-BriskLayerOne::getAgastPoints(int threshold, short2* keypoints)
+int
+BriskLayerOne::getAgastPoints(int threshold, short2* keypoints, float* scores)
 {
   //oast_9_16_->setThreshold(threshold);
   //oast_9_16_->detect(img_, keypoints);
 
   //__CV_CUDA_HOST_DEVICE__ PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
-  int* scoreData;
+/*  int* scoreData;
 
   //PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
   PtrStepSzi scores(true, img_.rows, img_.cols, scoreData, img_.cols);
@@ -173,17 +173,18 @@ BriskLayerOne::getAgastPoints(int threshold, short2* keypoints)
   newArray( loc, 3000, true );
 
   float* response;//todo: delete
-  newArray( response, 3000, false );
+  newArray( response, 3000, false );*/
 
   //int detectMe1( PtrStepSzb image, short2* keyPoints, PtrStepSzi scores, short2* loc, float* response, int threshold=10, int maxPoints=5000, bool ifNoMaxSup = true);
 
-  const size_t num = detectMe1( img_, loc, scores, keypoints, response, threshold );
+  return detectMe1( img_, loc, scores_, keypoints, scores, threshold );
+  //return num;
   // also write scores
   //const size_t num = keypoints.size();
 
 /*  for (size_t i = 0; i < num; i++)
     scores_((int)keypoints[i].pt.y, (int)keypoints[i].pt.x) = saturate_cast<unsigned char>(keypoints[i].response);*/
-  scores_ = scores;
+  //scores_ = scores;
 }
 
 /***

@@ -61,8 +61,8 @@ public:
 	    return offset_;
 	  }
 
-	void
-	getAgastPoints(int threshold, short2* keypoints);
+	int
+	getAgastPoints(int threshold, short2* keypoints, float* scores);
 
 	__device__ inline int
 	getAgastScore(const int x, const int y, int threshold) const;
@@ -106,7 +106,7 @@ public:
 
   // get Keypoints
   void
-  getKeypoints(const int _threshold, short2* keypoints);
+  getKeypoints(const int threshold_, float2* keypoints, float* kpSize, float* kpScore);
 
 protected:
   // nonmax suppression:
@@ -147,11 +147,25 @@ protected:
   int layers_;
   BriskLayerOne pyramid_[8];
 
+
+  //getkeypoint use
+  short2** kpsLoc[8];
+  int kpsCount[8];
+  int kpsCountAfter[8];
+
   // some constant parameters:
   static const float safetyFactor_;
   static const float basicSize_;
 };
 
+
+const float BRISK_Impl::basicSize_ = 12.0f;
+const unsigned int BRISK_Impl::scales_ = 64;
+const float BRISK_Impl::scalerange_ = 30.f; // 40->4 Octaves - else, this needs to be adjusted...
+const unsigned int BRISK_Impl::n_rot_ = 1024; // discretization of the rotation look-up
+
+const float BriskScaleSpace::safetyFactor_ = 1.0f;
+const float BriskScaleSpace::basicSize_ = 12.0f;
 
 
 #endif /* BRISKSCALESPACE_CUH_ */
