@@ -17,6 +17,11 @@ class BriskLayerOne
 
 public:
 
+  ~BriskLayerOne()
+  {
+	  cudaFree(locTemp);
+  }
+
   struct CommonParams
   {
   static const int HALFSAMPLE = 0;
@@ -87,8 +92,12 @@ public:
 
   BriskLayerOne(const BriskLayerOne& layer, int mode);
 
+  BriskLayerOne():agast(640)
+  {}//todo: check no bug
+
 };
 
+//wangwang-3
 
 class BriskScaleSpace
 {
@@ -97,7 +106,7 @@ public:
   BriskScaleSpace(int _octaves = 3);
   ~BriskScaleSpace()
   {
-
+	  cudaFree(scoreTemp);
   }
 
   // construct the image pyramids
@@ -151,6 +160,7 @@ public:
   short2* kpsLoc[8];
   int kpsCount[8];
   int kpsCountAfter[8];
+  float* scoreTemp;
 
   // some constant parameters:
   static const float safetyFactor_;
@@ -163,6 +173,7 @@ __global__ void refineKernel1( BriskScaleSpace space,float2* keypoints, float* k
 __global__ void refineKernel2( BriskScaleSpace space,float2* keypoints, float* kpSize, float* kpScore,const int threshold_ );
 
 
+//wangwang-2
 
 class BRISK_Impl
 {
@@ -255,7 +266,7 @@ const float BriskScaleSpace::basicSize_ = 12.0f;
 #endif
 
 
-//mark
+//wangwang-1
 
 
 /***
@@ -610,9 +621,21 @@ BriskLayerOne::twothirdsample(const PtrStepSzb& srcimg, PtrStepSzb& dstimg)
   resize3_2(srcimg, dstimg);
 }
 
-//wangwang
+//wangwang0
 
 // construct the image pyramids
+// construct telling the octaves number:
+BriskScaleSpace::BriskScaleSpace(int _octaves)
+{
+  if (_octaves == 0)
+    layers_ = 1;
+  else
+    layers_ = 2 * _octaves;
+
+    newArray( scoreTemp, maxPointNow, false   );
+}
+
+
 void
 BriskScaleSpace::constructPyramid(const PtrStepSzb& image)
 {
@@ -644,9 +667,6 @@ BriskScaleSpace::getKeypoints(const int threshold_, float2* keypoints, float* kp
   // assign thresholds
   int safeThreshold_ = (int)(threshold_ * safetyFactor_);
  // std::vector<std::vector<cv::KeyPoint> > agastPoints;
-
-  float* scoreTemp;
-  newArray( scoreTemp, maxPointNow, false   );
 
   //agastPoints.resize(layers_);
 
