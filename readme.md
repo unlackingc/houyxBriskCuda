@@ -3,7 +3,7 @@
 - cudaTest：没有卵用
 - FastTest： 对==cv::cuda::FastFeatureDetector==的测试
 - FastCuda：  对==cv::cuda::FastFeatureDetector==的提取
-- briskCuda： 尚未建立
+- FuckBrisk： 对opencv3.2中brisk.cpp的移植
 
 # FastCuda
 Api
