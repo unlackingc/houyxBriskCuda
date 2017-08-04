@@ -8,6 +8,14 @@
 
 #include "briskCode/BriskScaleSpace.cuh"
 
+
+int main()
+{
+	cout << "Here" << endl;
+	return 0;
+}
+
+/*
 #include "opencv2/cudafeatures2d.hpp"
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv/cv.h>
@@ -22,11 +30,11 @@ GpuMat createMat(Size size, int type, bool useRoi = false)
 {
     Size size0 = size;
 
-/*    if (useRoi)//todo: parse more
+    if (useRoi)//todo: parse more
     {
         size0.width += randomInt(5, 15);
         size0.height += randomInt(5, 15);
-    }*/
+    }
 
     GpuMat d_m(size0, type);
 
@@ -167,13 +175,14 @@ int main()
 
 
     cout<<"size of description of Img: "<<fastKpRange.size()<<endl;
-/*    for( int i = 0; i < KpRange.size(); i ++ )
+    for( int i = 0; i < KpRange.size(); i ++ )
     {
     	cout << "key point " <<i << ":\t" << KpRange[i].pt.x <<"\t" << KpRange[i].pt.y <<endl;
-    }*/
+    }
 	cout << "starting" << endl;
 
 	return 0;
 }
+*/
 
 

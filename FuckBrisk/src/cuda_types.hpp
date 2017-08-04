@@ -77,6 +77,14 @@ template<typename T> __host__  bool newArray( T * ptr, int size, bool ifset )
 	return true;
 }
 
+template<typename T> __host__  bool cleanArray( T * ptr, int size )
+{
+
+	CUDA_CHECK_RETURN(cudaMemset ( ptr, 0, sizeof(T)*size ));
+
+	return true;
+}
+
 template <typename T> struct DevPtr
 {
 public:

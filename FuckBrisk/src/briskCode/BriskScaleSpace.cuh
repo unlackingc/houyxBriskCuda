@@ -19,7 +19,9 @@ public:
 
   ~BriskLayerOne()
   {
-	  cudaFree(locTemp);
+	  cudaFree(locTemp);//todo: 小心隐形调用引起不必要的释放
+	  cudaFree(img_.data);
+	  cudaFree(scores_.data);
   }
 
   struct CommonParams
@@ -107,6 +109,10 @@ public:
   ~BriskScaleSpace()
   {
 	  cudaFree(scoreTemp);
+	    for (int i = 0; i < layers_; i++)
+	    {
+	    	cudaFree( kpsLoc[i]  );
+	    }
   }
 
   // construct the image pyramids
@@ -114,7 +120,7 @@ public:
   constructPyramid(const PtrStepSzb& image);
 
   // get Keypoints
-  void
+  int
   getKeypoints(const int threshold_, float2* keypoints, float* kpSize, float* kpScore);
 
   // nonmax suppression:
@@ -161,6 +167,7 @@ public:
   int kpsCount[8];
   int kpsCountAfter[8];
   float* scoreTemp;
+  PtrStepSzb _integral;
 
   // some constant parameters:
   static const float safetyFactor_;
@@ -183,24 +190,29 @@ public:
     explicit BRISK_Impl(const std::vector<float> &radiusList, const std::vector<int> &numberList,
         float dMax=5.85f, float dMin=8.2f, const std::vector<int> indexChange=std::vector<int>());
 
-    virtual ~BRISK_Impl();
-
+    __host__ ~BRISK_Impl();
 
     // call this to generate the kernel:
     // circle of radius r (pixels), with n points;
     // short pairings with dMax, long pairings with dMin
-    void generateKernel(const std::vector<float> &radiusList,
-        const std::vector<int> &numberList, float dMax=5.85f, float dMin=8.2f,
-        const std::vector<int> &indexChange=std::vector<int>());
+    void generateKernel(const float* radiusList,
+            const int* numberList,
+            const int ListSize,
+            float dMax, float dMin);
 
+
+    int detectAndCompute( PtrStepSzb _image, float2* keypoints, float* kpSize, float* kpScore,
+    		  bool useProvidedKeypoints);
 /*    void detectAndCompute( InputArray image, InputArray mask,
                      CV_OUT std::vector<KeyPoint>& keypoints,
                      OutputArray descriptors,
                      bool useProvidedKeypoints );*/
 
-protected:
 
-/*    void computeKeypointsNoOrientation(InputArray image, InputArray mask, std::vector<KeyPoint>& keypoints) const;
+
+    int computeKeypointsNoOrientation(PtrStepSzb _image, float2* keypoints, float* kpSize, float* kpScore);
+    int computeDescriptorsAndOrOrientation(PtrStepSzb _image, float2* keypoints, float* kpSize, float* kpScore,bool doDescriptors, bool doOrientation, bool useProvidedKeypoints);
+    /*
     void computeDescriptorsAndOrOrientation(InputArray image, InputArray mask, std::vector<KeyPoint>& keypoints,
                                        OutputArray descriptors, bool doDescriptors, bool doOrientation,
                                        bool useProvidedKeypoints) const;*/
@@ -239,7 +251,7 @@ protected:
     static const unsigned int n_rot_;    // discretization of the rotation look-up
 
     // pairs
-    int strings_;                        // number of uchars the descriptor consists of
+    int strings_;                        // number of unsigned chars the descriptor consists of
     float dMax_;                         // short pair maximum distance
     float dMin_;                         // long pair maximum distance
     BriskShortPair* shortPairs_;         // d<_dMax
@@ -249,6 +261,15 @@ protected:
 
     // general
     static const float basicSize_;
+
+    //temp data for detect todo: init
+    float* kscalesG;
+    float2* keypointsG;
+    float* kpSizeG;
+    float* kpScoreG;
+    int* _valuesG;//采样点大小
+    PtrStepSzi _integralG;
+    PtrStepSzb descriptorsG;
 };
 
 
@@ -283,7 +304,7 @@ BriskLayerOne::BriskLayerOne(const PtrStepSzb& img_in, float scale_in, float off
   int* scoreData;
   //PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
   scores_ = PtrStepSzi(1,true, img_.rows, img_.cols, scoreData, img_.cols);
-  //scores_ = cv::Mat_<uchar>::zeros(img_in.rows, img_in.cols);
+  //scores_ = cv::Mat_<unsigned char>::zeros(img_in.rows, img_in.cols);
   // attention: this means that the passed image reference must point to persistent memory
   scale_ = scale_in;
   offset_ = offset_in;
@@ -497,7 +518,7 @@ BriskLayerOne::value(const PtrStepSzi mat, float xf, float yf, float scale_in) c
   const int r_y = (int)((yf - y) * 1024);
   const int r_x_1 = (1024 - r_x);
   const int r_y_1 = (1024 - r_y);
-  const int* ptr = (image.ptr() + x + y * imagecols);//may raise: uchar to int
+  const int* ptr = (image.ptr() + x + y * imagecols);//may raise: unsigned char to int
   // just interpolate:
   ret_val = (r_x_1 * r_y_1 * int(*ptr));
   ptr++;
@@ -633,6 +654,11 @@ BriskScaleSpace::BriskScaleSpace(int _octaves)
     layers_ = 2 * _octaves;
 
     newArray( scoreTemp, maxPointNow, false   );
+
+    for (int i = 0; i < layers_; i++)
+    {
+      newArray( kpsLoc[i], maxPointNow, false   );
+    }
 }
 
 
@@ -659,7 +685,7 @@ BriskScaleSpace::constructPyramid(const PtrStepSzb& image)
  * @param threshold_
  * @param keypoints
  */
-void
+int
 BriskScaleSpace::getKeypoints(const int threshold_, float2* keypoints, float* kpSize, float* kpScore)
 {
 
@@ -673,7 +699,7 @@ BriskScaleSpace::getKeypoints(const int threshold_, float2* keypoints, float* kp
   // go through the octaves and intra layers and calculate agast corner scores:
   for (int i = 0; i < layers_; i++)
   {
-    newArray( kpsLoc[i], maxPointNow, false   );
+    //newArray( kpsLoc[i], maxPointNow, false   );
     // call OAST16_9 without nms
     BriskLayerOne& l = pyramid_[i];
     kpsCount[i] = l.getAgastPoints(safeThreshold_, kpsLoc[i],scoreTemp); //todo: 并行化
@@ -728,7 +754,7 @@ BriskScaleSpace::getKeypoints(const int threshold_, float2* keypoints, float* kp
 
     }*/
 
-    return;
+    return kpsCountAfter[0];
   }
 
   float x, y, scale, score;
@@ -751,6 +777,8 @@ BriskScaleSpace::getKeypoints(const int threshold_, float2* keypoints, float* kp
   cudaMemcpyAsync(&kpsCountAfter[0], counter_ptr, sizeof(unsigned int), cudaMemcpyDeviceToHost) ;//todo: cudaSafeCall
 
   cudaStreamSynchronize(NULL) ;//todo: cudaSafeCall
+
+  return kpsCountAfter[0];
 
 /*  for (int i = 0; i < layers_; i++)
   {
@@ -1995,6 +2023,10 @@ BriskScaleSpace::subpixel2D(const int s_0_0, const int s_0_1, const int s_0_2, c
 __global__ void refineKernel1(BriskScaleSpace space, float2* keypoints,
     float* kpSize, float* kpScore, const int threshold_, int whichLayer) {
   const int kpIdx = threadIdx.x + blockIdx.x * blockDim.x;
+  if(kpIdx >= space.kpsCount[0])
+  {
+	  return;
+  }
 
   const short2& point = space.kpsLoc[whichLayer][kpIdx];
   // first check if it is a maximum:
@@ -2125,8 +2157,741 @@ __global__ void refineKernel2(BriskScaleSpace space, float2* keypoints,
 
 // }
 
+//wangwang3
+
+int
+BRISK_Impl::computeKeypointsNoOrientation(PtrStepSzb _image, float2* keypoints, float* kpSize, float* kpScore)
+{
+ /* Mat image = _image.getMat(), mask = _mask.getMat();
+  if( image.type() != CV_8UC1 )
+      cvtColor(_image, image, COLOR_BGR2GRAY);*/
+
+  //(const int threshold_, float2* keypoints, float* kpSize, float* kpScore)
+  BriskScaleSpace briskScaleSpace(octaves); // todo: insure octaves == 8
+
+  briskScaleSpace.constructPyramid(_image);
+  return briskScaleSpace.getKeypoints(threshold, keypoints,kpSize,kpScore);
+
+  // remove invalid points
+  //KeyPointsFilter::runByPixelsMask(keypoints, mask);
+}
+
+//todo: 更正
+__host__ BRISK_Impl::~BRISK_Impl()
+{
+	cudaFree(patternPoints_);
+	cudaFree(shortPairs_);
+	cudaFree(longPairs_);
+	cudaFree (scaleList_);
+	cudaFree (sizeList_);
+
+  cudaFree(descriptorsG.data);
+}
+
+/***
+ * 算有没有出界
+ * @param minX
+ * @param minY
+ * @param maxX
+ * @param maxY
+ * @param keyPt
+ * @return
+ */
+__device__ inline bool
+RoiPredicate(const float minX, const float minY, const float maxX, const float maxY, const float2& pt)
+{
+  //const Point2f& pt = keyPt.pt;
+  return (pt.x < minX) || (pt.x >= maxX) || (pt.y < minY) || (pt.y >= maxY);
+}
+
+
+__global__ void deleteBorderkernel( BRISK_Impl briskImpl, const int ksize,  float2* keypoints, float* kpSize, float* kpScore, PtrStepSzb _image )
+{
+	  const int k = threadIdx.x + blockIdx.x * blockDim.x;
+
+	  if( k >= ksize )
+	  {
+		  return;
+	  }
+
+	  const float log2 = 0.693147180559945f;
+	  const float lb_scalerange = (float)(log(BRISK_Impl::scalerange_) / (log2));
+	  //std::vector<cv::KeyPoint>::iterator beginning = keypoints.begin();
+	  //std::vector<int>::iterator beginningkscales = kscales.begin();
+	  const float basicSize06 = briskImpl.basicSize_ * 0.6f;
+
+	  //算的真辛苦，只不过是把采样点超出图像的keypoint删除了
+	  //todo : 无法理解为啥scale_=64
+	  unsigned int scale;
+/*	  for (size_t k = 0; k < ksize; k++)
+	  {*/
+
+	      scale = max((int) (briskImpl.scales_ / lb_scalerange * (log(kpSize[k] / (basicSize06)) / log2) + 0.5), 0);
+	      // saturate
+	      if (scale >= briskImpl.scales_)
+	        scale = briskImpl.scales_ - 1;
+	      briskImpl.kscalesG[k] = scale;
+	    const int border = briskImpl.sizeList_[scale];
+	    const int border_x = _image.cols - border;
+	    const int border_y = _image.rows - border;
+	    if (RoiPredicate((float)border, (float)border, (float)border_x, (float)border_y, keypoints[k]))
+	    {
+	      keypoints[k] = make_float2(-1,-1);
+	      briskImpl.kscalesG[k] = -1;//mark as bad.
+
+	      const unsigned int ind = atomicInc(&g_counter1,
+			(unsigned int) (-1));
+
+/*	      keypoints.erase(beginning + k);
+	      kscales.erase(beginningkscales + k);
+	      if (k == 0)
+	      {
+	    	  keypoints[k] =
+	        beginningkscales = kscales.begin();
+	      }*/
+	      //ksize--;
+	      //k--;
+	    }
+	  /*}*/
+}
+
+#define CV_PI   3.1415926535897932384626433832795
+#define CV_2PI 6.283185307179586476925286766559
+#define CV_LOG2 0.69314718055994530941723212145818
 
 
 
+// simple alternative:
+
+/***
+ * 因为是计算单个点的亮度值，又没有循环，直接当做__device__代码即可
+ * @param image
+ * @param integral
+ * @param key_x
+ * @param key_y
+ * @param scale
+ * @param rot
+ * @param point
+ * @return
+ */
+__device__ inline int
+/*BRISK_Impl:: todo: check right*/
+smoothedIntensity(BRISK_Impl& briskImpl, PtrStepSzb& image, PtrStepSzi& integral, const float key_x,
+                                            const float key_y, const unsigned int scale, const unsigned int rot,
+                                            const unsigned int point)
+{
+
+  // get the float position
+  const BRISK_Impl::BriskPatternPoint& briskPoint = briskImpl.patternPoints_[scale * briskImpl.n_rot_ * briskImpl.points_ + rot * briskImpl.points_ + point];
+  const float xf = briskPoint.x + key_x;
+  const float yf = briskPoint.y + key_y;
+  const int x = int(xf);
+  const int y = int(yf);
+  const int& imagecols = image.cols;
+
+  // get the sigma:
+  const float sigma_half = briskPoint.sigma;
+  const float area = 4.0f * sigma_half * sigma_half;
+
+  // calculate output:
+  int ret_val;
+  if (sigma_half < 0.5)
+  {
+    //interpolation multipliers:
+    const int r_x = (int)((xf - x) * 1024);
+    const int r_y = (int)((yf - y) * 1024);
+    const int r_x_1 = (1024 - r_x);
+    const int r_y_1 = (1024 - r_y);
+    const unsigned char* ptr = &image(y, x);
+    size_t step = image.step;
+    // just interpolate:
+    ret_val = r_x_1 * r_y_1 * ptr[0] + r_x * r_y_1 * ptr[1] +
+              r_x * r_y * ptr[step] + r_x_1 * r_y * ptr[step+1];
+    return (ret_val + 512) / 1024;
+  }
+
+  // this is the standard case (simple, not speed optimized yet):
+
+  // scaling:
+  const int scaling = (int)(4194304.0 / area);
+  const int scaling2 = int(float(scaling) * area / 1024.0);
+
+  // the integral image is larger:
+  const int integralcols = imagecols + 1;
+
+  // calculate borders
+  const float x_1 = xf - sigma_half;
+  const float x1 = xf + sigma_half;
+  const float y_1 = yf - sigma_half;
+  const float y1 = yf + sigma_half;
+
+  const int x_left = int(x_1 + 0.5);
+  const int y_top = int(y_1 + 0.5);
+  const int x_right = int(x1 + 0.5);
+  const int y_bottom = int(y1 + 0.5);
+
+  // overlap area - multiplication factors:
+  const float r_x_1 = float(x_left) - x_1 + 0.5f;
+  const float r_y_1 = float(y_top) - y_1 + 0.5f;
+  const float r_x1 = x1 - float(x_right) + 0.5f;
+  const float r_y1 = y1 - float(y_bottom) + 0.5f;
+  const int dx = x_right - x_left - 1;
+  const int dy = y_bottom - y_top - 1;
+  const int A = (int)((r_x_1 * r_y_1) * scaling);
+  const int B = (int)((r_x1 * r_y_1) * scaling);
+  const int C = (int)((r_x1 * r_y1) * scaling);
+  const int D = (int)((r_x_1 * r_y1) * scaling);
+  const int r_x_1_i = (int)(r_x_1 * scaling);
+  const int r_y_1_i = (int)(r_y_1 * scaling);
+  const int r_x1_i = (int)(r_x1 * scaling);
+  const int r_y1_i = (int)(r_y1 * scaling);
+
+  if (dx + dy > 2)
+  {
+    // now the calculation:
+    const unsigned char* ptr = image.data + x_left + imagecols * y_top;
+    // first the corners:
+    ret_val = A * int(*ptr);
+    ptr += dx + 1;
+    ret_val += B * int(*ptr);
+    ptr += dy * imagecols + 1;
+    ret_val += C * int(*ptr);
+    ptr -= dx + 1;
+    ret_val += D * int(*ptr);
+
+    // next the edges:
+    const int* ptr_integral = integral.data + x_left + integralcols * y_top + 1; //todo: error: what int?!!!
+    // find a simple path through the different surface corners
+    const int tmp1 = (*ptr_integral);
+    ptr_integral += dx;
+    const int tmp2 = (*ptr_integral);
+    ptr_integral += integralcols;
+    const int tmp3 = (*ptr_integral);
+    ptr_integral++;
+    const int tmp4 = (*ptr_integral);
+    ptr_integral += dy * integralcols;
+    const int tmp5 = (*ptr_integral);
+    ptr_integral--;
+    const int tmp6 = (*ptr_integral);
+    ptr_integral += integralcols;
+    const int tmp7 = (*ptr_integral);
+    ptr_integral -= dx;
+    const int tmp8 = (*ptr_integral);
+    ptr_integral -= integralcols;
+    const int tmp9 = (*ptr_integral);
+    ptr_integral--;
+    const int tmp10 = (*ptr_integral);
+    ptr_integral -= dy * integralcols;
+    const int tmp11 = (*ptr_integral);
+    ptr_integral++;
+    const int tmp12 = (*ptr_integral);
+
+    // assign the weighted surface integrals:
+    const int upper = (tmp3 - tmp2 + tmp1 - tmp12) * r_y_1_i;
+    const int middle = (tmp6 - tmp3 + tmp12 - tmp9) * scaling;
+    const int left = (tmp9 - tmp12 + tmp11 - tmp10) * r_x_1_i;
+    const int right = (tmp5 - tmp4 + tmp3 - tmp6) * r_x1_i;
+    const int bottom = (tmp7 - tmp6 + tmp9 - tmp8) * r_y1_i;
+
+    return (ret_val + upper + middle + left + right + bottom + scaling2 / 2) / scaling2;
+  }
+
+  // now the calculation:
+  const unsigned char* ptr = image.data + x_left + imagecols * y_top;
+  // first row:
+  ret_val = A * int(*ptr);
+  ptr++;
+  const unsigned char* end1 = ptr + dx;
+  for (; ptr < end1; ptr++)
+  {
+    ret_val += r_y_1_i * int(*ptr);
+  }
+  ret_val += B * int(*ptr);
+  // middle ones:
+  ptr += imagecols - dx - 1;
+  const unsigned char* end_j = ptr + dy * imagecols;
+  for (; ptr < end_j; ptr += imagecols - dx - 1)
+  {
+    ret_val += r_x_1_i * int(*ptr);
+    ptr++;
+    const unsigned char* end2 = ptr + dx;
+    for (; ptr < end2; ptr++)
+    {
+      ret_val += int(*ptr) * scaling;
+    }
+    ret_val += r_x1_i * int(*ptr);
+  }
+  // last row:
+  ret_val += D * int(*ptr);
+  ptr++;
+  const unsigned char* end3 = ptr + dx;
+  for (; ptr < end3; ptr++)
+  {
+    ret_val += r_y1_i * int(*ptr);
+  }
+  ret_val += C * int(*ptr);
+
+  return (ret_val + scaling2 / 2) / scaling2;
+}
+
+
+
+//todo:合二为一
+__global__ void generateDesKernel( BRISK_Impl briskImpl, const int ksize,  float2* keypoints, float* kpSize, float* kpScore, PtrStepSzb _image, bool doDescriptors, bool doOrientation, bool useProvidedKeypoints  )
+{
+	  const int k = threadIdx.x + blockIdx.x * blockDim.x;
+	  float angle = 0;
+	  if( k >= ksize || keypoints[k].x == -1 ||  keypoints[k].y == -1 || briskImpl.kscalesG[k] == -1 )
+	  {
+		  return;
+	  }
+
+	  int t1;
+	  int t2;
+
+	  // the feature orientation
+	  const unsigned char* ptr = briskImpl.descriptorsG.data;
+	  for (size_t k = 0; k < ksize; k++)
+	  {
+		float2& kp = keypoints[k];
+	    const int& scale = briskImpl.kscalesG[k];
+	    int* pvalues = briskImpl._valuesG;
+	    const float& x = kp.x;
+	    const float& y = kp.y;
+
+	    //为了计算梯度方向只能先算一遍灰度值
+	    if (doOrientation)
+	    {
+
+	        // get the gray values in the unrotated pattern
+	        for(unsigned int i = 0; i < briskImpl.points_; i++)
+	        {
+	          *(pvalues++) = smoothedIntensity(briskImpl,_image, briskImpl._integralG, x, y, scale, 0, i);
+	        }
+
+	        //计算梯度方向
+	        int direction0 = 0;
+	        int direction1 = 0;
+	        // now iterate through the long pairings
+	        const BRISK_Impl::BriskLongPair* max = briskImpl.longPairs_ + briskImpl.noLongPairs_;
+	        for (BRISK_Impl::BriskLongPair* iter = briskImpl.longPairs_; iter < max; ++iter)
+	        {
+	          t1 = *(briskImpl._valuesG + iter->i);
+	          t2 = *(briskImpl._valuesG + iter->j);
+	          const int delta_t = (t1 - t2);
+	          // update the direction:
+	          const int tmp0 = delta_t * (iter->weighted_dx) / 1024;
+	          const int tmp1 = delta_t * (iter->weighted_dy) / 1024;
+	          direction0 += tmp0;
+	          direction1 += tmp1;
+	        }
+
+	        angle = (float)(atan2((float) direction1, (float) direction0) / CV_PI * 180.0);//tod: check if right
+
+	        if (!doDescriptors)
+	        {
+	          if (angle < 0)
+	            angle += 360.f;
+	        }
+	    }
+
+	    if (!doDescriptors)
+	      continue;
+
+	    int theta;
+	    if (angle==-1)
+	    {
+	        // don't compute the gradient direction, just assign a rotation of 0°
+	        theta = 0;
+	    }
+	    else
+	    {
+	        theta = (int) (briskImpl.n_rot_ * (angle / (360.0)) + 0.5);
+	        if (theta < 0)
+	          theta += briskImpl.n_rot_;
+	        if (theta >= int(briskImpl.n_rot_))
+	          theta -= briskImpl.n_rot_;
+	    }
+
+	    if (angle < 0)
+	      angle += 360.f;
+
+	    // now also extract the stuff for the actual direction:
+	    // let us compute the smoothed values
+	    int shifter = 0;
+
+	    //unsigned int mean=0;
+	    pvalues = briskImpl._valuesG;
+	    // get the gray values in the rotated pattern
+	    for (unsigned int i = 0; i < briskImpl.points_; i++)
+	    {
+	      *(pvalues++) = smoothedIntensity(briskImpl,_image, briskImpl._integralG, x, y, scale, theta, i);
+	    }
+
+
+	    //最终计算灰度
+	    // now iterate through all the pairings
+	    unsigned int* ptr2 = (unsigned int*) ptr;
+	    const BRISK_Impl::BriskShortPair* max = briskImpl.shortPairs_ + briskImpl.noShortPairs_;
+	    for (BRISK_Impl::BriskShortPair* iter = briskImpl.shortPairs_; iter < max; ++iter)
+	    {
+	      t1 = *(briskImpl._valuesG + iter->i);
+	      t2 = *(briskImpl._valuesG + iter->j);
+	      if (t1 > t2)
+	      {
+	        *ptr2 |= ((1) << shifter);
+
+	      } // else already initialized with zero
+	      // take care of the iterators:
+	      ++shifter;
+	      if (shifter == 32)
+	      {
+	        shifter = 0;
+	        ++ptr2;
+	      }
+	    }
+
+	    ptr += briskImpl.strings_;
+	  }
+}
+
+//todo: imple
+void integral(PtrStepSzb _image,PtrStepSzi ret)
+{
+	//PtrStepSzi _integralG imit
+}
+
+/***
+ * tpdo: init keypoint and dec....
+ * 入口函数1
+ * @param _image
+ * @param _mask
+ * @param keypoints
+ * @param _descriptors
+ * @param doDescriptors
+ * @param doOrientation
+ * @param useProvidedKeypoints
+ */
+int
+BRISK_Impl::computeDescriptorsAndOrOrientation(PtrStepSzb _image, float2* keypoints, float* kpSize, float* kpScore,
+		 bool doDescriptors, bool doOrientation,
+                                     bool useProvidedKeypoints)
+{
+ /* Mat image = _image.getMat(), mask = _mask.getMat();
+  if( image.type() != CV_8UC1 )
+      cvtColor(image, image, COLOR_BGR2GRAY);
+*/
+  int keyPointsCount = 0;
+
+  if (!useProvidedKeypoints)
+  {
+    doOrientation = true;
+    keyPointsCount = computeKeypointsNoOrientation(_image, keypoints,kpSize, kpScore);
+  }
+
+  //Remove keypoints very close to the border
+  int ksize = keyPointsCount;
+
+
+  //std::vector<int> kscales; // remember the scale per keypoint
+  //kscales.resize(ksize);
+  void* counter_ptr;
+  cudaGetSymbolAddress(&counter_ptr, g_counter1) ;
+
+  cudaMemsetAsync(counter_ptr, 0, sizeof(unsigned int));
+
+ // deleteBorderkernel( BRISK_Impl briskImpl, const int ksize,  float2* keypoints, float* kpSize, float* kpScore, PtrStepSzb _image )
+
+  deleteBorderkernel<<<ksize/32 + 1,32>>>(  *this, ksize, keypoints, kpSize, kpScore, _image );
+
+  cudaGetLastError() ;//todo: cudaSafeCall
+
+  int temp;
+  cudaMemcpyAsync(&temp, counter_ptr, sizeof(unsigned int), cudaMemcpyDeviceToHost) ;//todo: cudaSafeCall
+
+  cudaStreamSynchronize(NULL) ;//todo: cudaSafeCall
+
+  // first, calculate the integral image over the whole image:
+  // current integral image
+ /* Mat _integral; // the integral image*/
+  integral(_image, _integralG);
+
+  //int* _values = new int[points_]; // for temporary use
+
+
+  // resize the descriptors:
+  //cv::Mat descriptors;
+  cleanArray(descriptorsG.data,maxPointNow*strings_);
+
+/*  if (doDescriptors)
+  {
+    _descriptors.create((int)ksize, strings_, CV_8U);
+    descriptors = _descriptors.getMat();
+    descriptors.setTo(0);
+  }*/
+
+  // now do the extraction for all keypoints:
+  //__global__ void generateDesKernel( BRISK_Impl briskImpl, const int ksize,  float2* keypoints, float* kpSize, float* kpScore, PtrStepSzb _image, bool doDescriptors, bool doOrientation,
+
+  // temporary variables containing gray values at sample points:
+  generateDesKernel<<<ksize/32 + 1,32>>>(  *this,ksize, keypoints, kpSize, kpScore,_image,doDescriptors,  doOrientation, useProvidedKeypoints );
+
+
+  // clean-up
+  //delete[] _values;
+
+  return ksize-temp;
+}
+
+
+int
+BRISK_Impl::detectAndCompute( PtrStepSzb _image, float2* keypoints, float* kpSize, float* kpScore,
+		  bool useProvidedKeypoints)
+{
+  bool doOrientation=true;
+
+  // If the user specified cv::noArray(), this will yield false. Otherwise it will return true.
+  //bool doDescriptors = _descriptors.needed();
+  bool doDescriptors = true;
+
+
+  return computeDescriptorsAndOrOrientation(_image, keypoints,  kpSize,  kpScore,  doDescriptors, doOrientation,
+                                       useProvidedKeypoints);
+}
+
+/***
+ * 这个只需要把必要的数组存进GPU，因为只会初始化一次
+ * @param radiusList
+ * @param numberList
+ * @param dMax
+ * @param dMin
+ * @param _indexChange
+ */
+void
+BRISK_Impl::generateKernel(const float* radiusList,
+        const int* numberList,
+        const int ListSize,
+        float dMax, float dMin)
+{
+  dMax_ = dMax;
+  dMin_ = dMin;
+
+  // get the total number of points
+  const int rings = ListSize;
+  assert(rings != 0 );
+  points_ = 0; // remember the total number of points
+
+  for (int ring = 0; ring < rings; ring++)
+  {
+    points_ += numberList[ring];
+  }
+  // set up the patterns
+  BriskPatternPoint* patternPoints_i = new BriskPatternPoint[points_ * scales_ * n_rot_];
+  newArray( patternPoints_, points_ * scales_ * n_rot_, 1 );
+
+  BriskPatternPoint* patternIterator = patternPoints_i;
+
+  // define the scale discretization:
+  static const float lb_scale = (float)(log(scalerange_) / log(2.0));
+  static const float lb_scale_step = lb_scale / (scales_);
+
+
+  float* scaleList_i = new float[scales_];
+  unsigned int* sizeList_i = new unsigned int[scales_];
+  newArray( scaleList_, scales_, 1 );
+  newArray( sizeList_, scales_, 1 );
+
+/*
+  scaleList_ = new float[scales_];
+  sizeList_ = new unsigned int[scales_];
+*/
+
+  const float sigma_scale = 1.3f;
+
+  for (unsigned int scale = 0; scale < scales_; ++scale)
+  {
+    scaleList_i[scale] = (float)pow((double) 2.0, (double) (scale * lb_scale_step));
+    sizeList_i[scale] = 0;
+
+    // generate the pattern points look-up
+    double alpha, theta;
+    for (size_t rot = 0; rot < n_rot_; ++rot)
+    {
+      theta = double(rot) * 2 * CV_PI / double(n_rot_); // this is the rotation of the feature
+      for (int ring = 0; ring < rings; ++ring)
+      {
+        for (int num = 0; num < numberList[ring]; ++num)
+        {
+          // the actual coordinates on the circle
+          alpha = (double(num)) * 2 * CV_PI / double(numberList[ring]);
+          patternIterator->x = (float)(scaleList_i[scale] * radiusList[ring] * cos(alpha + theta)); // feature rotation plus angle of the point
+          patternIterator->y = (float)(scaleList_i[scale] * radiusList[ring] * sin(alpha + theta));
+          // and the gaussian kernel sigma
+          if (ring == 0)
+          {
+            patternIterator->sigma = sigma_scale * scaleList_i[scale] * 0.5f;
+          }
+          else
+          {
+            patternIterator->sigma = (float)(sigma_scale * scaleList_i[scale] * (double(radiusList[ring]))
+                                     * sin(CV_PI / numberList[ring]));
+          }
+          // adapt the sizeList if necessary
+          const unsigned int size = ceil(((scaleList_i[scale] * radiusList[ring]) + patternIterator->sigma)) + 1;
+          if (sizeList_i[scale] < size)
+          {
+            sizeList_i[scale] = size;
+          }
+
+          // increment the iterator
+          ++patternIterator;
+        }
+      }
+    }
+  }
+
+  // now also generate pairings
+
+/*  shortPairs_ = new BriskShortPair[points_ * (points_ - 1) / 2];
+  longPairs_ = new BriskLongPair[points_ * (points_ - 1) / 2];*/
+  BriskShortPair* shortPairs_i = new BriskShortPair[points_ * (points_ - 1) / 2];
+  BriskLongPair* longPairs_i = new BriskLongPair[points_ * (points_ - 1) / 2];
+
+  newArray(shortPairs_, points_ * (points_ - 1) / 2, 1 );
+  newArray(longPairs_, points_ * (points_ - 1) / 2, 1 );
+
+
+
+  noShortPairs_ = 0;
+  noLongPairs_ = 0;
+
+  // fill indexChange with 0..n if empty
+  unsigned int indSize = 0;
+  int* indexChange;
+  if (indSize == 0)
+  {
+    indexChange = new int[points_ * (points_ - 1) / 2];
+    indSize = points_ * (points_ - 1) / 2;
+
+    for (unsigned int i = 0; i < indSize; i++)
+      indexChange[i] = i;
+  }
+
+
+  const float dMin_sq = dMin_ * dMin_;
+  const float dMax_sq = dMax_ * dMax_;
+  for (unsigned int i = 1; i < points_; i++)
+  {
+    for (unsigned int j = 0; j < i; j++)
+    { //(find all the pairs)
+      // point pair distance:
+      const float dx = patternPoints_i[j].x - patternPoints_i[i].x;
+      const float dy = patternPoints_i[j].y - patternPoints_i[i].y;
+      const float norm_sq = (dx * dx + dy * dy);
+      if (norm_sq > dMin_sq)
+      {
+        // save to long pairs
+        BriskLongPair& longPair = longPairs_i[noLongPairs_];
+        longPair.weighted_dx = int((dx / (norm_sq)) * 2048.0 + 0.5);
+        longPair.weighted_dy = int((dy / (norm_sq)) * 2048.0 + 0.5);
+        longPair.i = i;
+        longPair.j = j;
+        ++noLongPairs_;
+      }
+      else if (norm_sq < dMax_sq)
+      {
+        // save to short pairs
+        assert(noShortPairs_ < indSize);
+        // make sure the user passes something sensible
+        BriskShortPair& shortPair = shortPairs_i[indexChange[noShortPairs_]];
+        shortPair.j = j;
+        shortPair.i = i;
+        ++noShortPairs_;
+      }
+    }
+  }
+
+  // no bits:
+  strings_ = (int) ceil((float(noShortPairs_)) / 128.0) * 4 * 4;
+
+
+  //start memCopy
+
+  free(indexChange);
+
+
+  cudaMemcpy(patternPoints_,patternPoints_i,sizeof(BriskPatternPoint)*points_ * scales_ * n_rot_,cudaMemcpyHostToDevice);
+  cudaMemcpy(scaleList_,scaleList_i,sizeof(float)*scales_,cudaMemcpyHostToDevice);
+  cudaMemcpy(sizeList_,sizeList_i,sizeof(unsigned int)*scales_,cudaMemcpyHostToDevice);
+  cudaMemcpy(shortPairs_,shortPairs_i,sizeof(BriskShortPair)*points_ * (points_ - 1) / 2,cudaMemcpyHostToDevice);
+  cudaMemcpy(longPairs_,longPairs_i,sizeof(BriskLongPair)*points_ * (points_ - 1) / 2,cudaMemcpyHostToDevice);
+
+  free( shortPairs_i );
+  free( longPairs_i );
+  free( sizeList_i );
+  free( scaleList_i );
+  free( patternPoints_i );
+}
+
+BRISK_Impl::BRISK_Impl(int thresh, int octaves_in, float patternScale)
+{
+/*	- Member 'sizeList_' was not initialized in this constructor done
+	- Member 'points_' was not initialized in this constructor done
+	- Member 'dMax_' was not initialized in this constructor done
+	- Member 'keypointsG' was not initialized in this constructor done
+	- Member 'patternPoints_' was not initialized in this done
+	 constructor
+	- Member 'shortPairs_' was not initialized in this constructor done
+	- Member 'dMin_' was not initialized in this constructor done
+	- Member 'scaleList_' was not initialized in this constructor done
+	- Member 'kscalesG' was not initialized in this constructor done
+	- Member '_valuesG' was not initialized in this constructor done
+	- Member 'noLongPairs_' was not initialized in this done
+	 constructor
+	- Member 'longPairs_' was not initialized in this constructor done
+	- Member 'kpScoreG' was not initialized in this constructor done
+	- Member 'strings_' was not initialized in this constructor done
+	- Member 'noShortPairs_' was not initialized in this done
+	 constructor
+	- Member 'kpSizeG' was not initialized in this constructor done */
+
+  threshold = thresh;
+  octaves = octaves_in;
+
+  float rList[5];
+  int nList[5];
+
+  // this is the standard pattern found to be suitable also
+  const double f = 0.85 * patternScale;
+
+  rList[0] = (float)(f * 0.);
+  rList[1] = (float)(f * 2.9);
+  rList[2] = (float)(f * 4.9);
+  rList[3] = (float)(f * 7.4);
+  rList[4] = (float)(f * 10.8);
+
+  nList[0] = 1;
+  nList[1] = 10;
+  nList[2] = 14;
+  nList[3] = 15;
+  nList[4] = 20;
+
+  generateKernel(rList, nList, 5, (float)(5.85 * patternScale), (float)(8.2 * patternScale));
+
+  	newArray( _valuesG,points_,1 );
+	newArray( keypointsG,maxPointNow,1 );
+	newArray( kscalesG, maxPointNow,1 );
+
+	newArray( kpScoreG,maxPointNow,1 );
+	newArray( kpSizeG,maxPointNow,1 );
+	unsigned char* temp;
+
+	//(int isHost, bool ifset_, int rows_, int cols_, T* data_, size_t step_)
+	descriptorsG = PtrStepSzb(1,true,1,maxPointNow*strings_,temp,maxPointNow*strings_);
+
+	//scores_ = PtrStepSzi(1,true, img_.rows, img_.cols, scoreData, img_.cols);
+    //PtrStepSzi _integralG; this will init in the integral function
+	//PtrStepSzb descriptorsG;
+}
 
 #endif /* BRISKSCALESPACE_CUH_ */
