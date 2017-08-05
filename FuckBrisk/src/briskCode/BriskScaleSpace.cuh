@@ -305,6 +305,9 @@ public:
     int* _valuesG;//采样点大小
     PtrStepSzi _integralG;
     PtrStepSzb descriptorsG;
+
+    int* temptestInner;
+
 };
 
 
@@ -2801,7 +2804,8 @@ BRISK_Impl::generateKernel(const float* radiusList,
   }
   // set up the patterns
   BriskPatternPoint* patternPoints_i = new BriskPatternPoint[points_ * scales_ * n_rot_];
-  newArray( patternPoints_, points_ * scales_ * n_rot_, 1 );
+  //newArray( patternPoints_, points_ * scales_ * n_rot_, 1 );
+
 
   BriskPatternPoint* patternIterator = patternPoints_i;
 
@@ -2812,8 +2816,7 @@ BRISK_Impl::generateKernel(const float* radiusList,
 
   float* scaleList_i = new float[scales_];
   unsigned int* sizeList_i = new unsigned int[scales_];
-  newArray( scaleList_, scales_, 1 );
-  newArray( sizeList_, scales_, 1 );
+
 
 /*
   scaleList_ = new float[scales_];
@@ -2871,8 +2874,7 @@ BRISK_Impl::generateKernel(const float* radiusList,
   BriskShortPair* shortPairs_i = new BriskShortPair[points_ * (points_ - 1) / 2];
   BriskLongPair* longPairs_i = new BriskLongPair[points_ * (points_ - 1) / 2];
 
-  newArray(shortPairs_, points_ * (points_ - 1) / 2, 1 );
-  newArray(longPairs_, points_ * (points_ - 1) / 2, 1 );
+
 
 
 
@@ -2931,15 +2933,32 @@ BRISK_Impl::generateKernel(const float* radiusList,
 
   //start memCopy
 
-  free(indexChange);
+  //free(indexChange);
 
+
+  //CUDA_CHECK_RETURN(cudaDeviceSynchronize());
+
+
+  int temptest = 10;
+
+/*  CUDA_CHECK_RETURN(cudaMalloc((void**)&temptestInner, sizeof(int)));
+  CUDA_CHECK_RETURN(cudaMemcpy(temptestInner,&temptest,sizeof(int),cudaMemcpyHostToDevice));*/
+
+
+  newArray(shortPairs_, points_ * (points_ - 1) / 2, 1 );
+  newArray(longPairs_, points_ * (points_ - 1) / 2, 1 );
+  newArray( scaleList_, scales_, 1 );
+  newArray( sizeList_, scales_, 1 );
+  newArray( patternPoints_, 1, 1 );
+  newArray( scaleList_, scales_, 1 );
+  newArray( sizeList_, scales_, 1 );
 
   cout << "before copy,size: " << sizeof(BriskPatternPoint)*points_ * scales_ * n_rot_ << endl;
-  CUDA_CHECK_RETURN(cudaMemcpy(patternPoints_,patternPoints_i,sizeof(BriskPatternPoint)*points_ * scales_ * n_rot_,cudaMemcpyHostToDevice));
+ // CUDA_CHECK_RETURN(cudaMemcpy(patternPoints_,patternPoints_i,sizeof(BriskPatternPoint),cudaMemcpyHostToDevice));
   CUDA_CHECK_RETURN(cudaMemcpy(scaleList_,scaleList_i,sizeof(float)*scales_,cudaMemcpyHostToDevice));
   CUDA_CHECK_RETURN(cudaMemcpy(sizeList_,sizeList_i,sizeof(unsigned int)*scales_,cudaMemcpyHostToDevice));
-  cudaMemcpy(shortPairs_,shortPairs_i,sizeof(BriskShortPair)*points_ * (points_ - 1) / 2,cudaMemcpyHostToDevice);
-  cudaMemcpy(longPairs_,longPairs_i,sizeof(BriskLongPair)*points_ * (points_ - 1) / 2,cudaMemcpyHostToDevice);
+  CUDA_CHECK_RETURN(cudaMemcpy(shortPairs_,shortPairs_i,sizeof(BriskShortPair)*points_ * (points_ - 1) / 2,cudaMemcpyHostToDevice));
+  CUDA_CHECK_RETURN(cudaMemcpy(longPairs_,longPairs_i,sizeof(BriskLongPair)*points_ * (points_ - 1) / 2,cudaMemcpyHostToDevice));
 
   free( shortPairs_i );
   free( longPairs_i );

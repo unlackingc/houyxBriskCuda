@@ -55,7 +55,7 @@ int main()
 	cout << "load image done!!" << endl;
 
 	BRISK_Impl a(  dstImage1.rows, dstImage1.cols );
-	a.detectAndCompute(imageIn, a.keypointsG, a.kpSizeG, a.kpScoreG, false);
+	//a.detectAndCompute(imageIn, a.keypointsG, a.kpSizeG, a.kpScoreG, false);
 
 
 	cout << "end!!" << endl;

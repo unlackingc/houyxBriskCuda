@@ -44,7 +44,7 @@ static void CheckCudaErrorAux (const char *file, unsigned line, const char *stat
 	#define CUDA_CHECK_RETURN(value) CheckCudaErrorAux(__FILE__,__LINE__, #value, value)
 #endif
 
-template<typename T> __CV_CUDA_HOST_DEVICE__  bool newArrayIn( T * ptr, int size, bool ifset )
+template<typename T> __CV_CUDA_HOST_DEVICE__  T * newArrayIn( T *& ptr, int size, bool ifset )
 {
 /*	CUDA_CHECK_RETURN( cudaMalloc((void**)&ptr, sizeof(T) * size));
 	if( ifset )
@@ -58,7 +58,7 @@ template<typename T> __CV_CUDA_HOST_DEVICE__  bool newArrayIn( T * ptr, int size
 	{
 		memset(ptr, 0, sizeof(T)*size);
 	}
-	return true;
+	return ptr;
 }
 
 template<typename T> __CV_CUDA_HOST_DEVICE__ T maxMe(T a, T b)
@@ -66,7 +66,7 @@ template<typename T> __CV_CUDA_HOST_DEVICE__ T maxMe(T a, T b)
 	return a>=b? a:b;
 }
 
-template<typename T> __host__  bool newArray( T * ptr, int size, bool ifset )
+template<typename T> __host__  T * newArray( T *& ptr, int size, bool ifset )
 {
 	CUDA_CHECK_RETURN( cudaMalloc((void**)&ptr, sizeof(T) * size));
 	if( ifset )
@@ -74,7 +74,7 @@ template<typename T> __host__  bool newArray( T * ptr, int size, bool ifset )
 		CUDA_CHECK_RETURN(cudaMemset ( ptr, 0, sizeof(T)*size ));
 	}
 
-	return true;
+	return ptr;
 }
 
 template<typename T> __host__  bool cleanArray( T * ptr, int size )
