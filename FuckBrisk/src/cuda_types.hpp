@@ -85,6 +85,14 @@ template<typename T> __host__  bool cleanArray( T * ptr, int size )
 	return true;
 }
 
+template<typename T> void pout( T* ptr, bool endline = true  )
+{
+	T temp;
+	cudaMemcpy(&temp, ptr, sizeof(T), cudaMemcpyDeviceToHost);
+	std::cout << "====GPU====(" << temp << ")";
+	std::cout << std::endl;
+}
+
 template <typename T> struct DevPtr
 {
 public:
@@ -121,11 +129,12 @@ public:
 
 	size_t step;
 
-	__CV_CUDA_HOST_DEVICE__       T* ptr(int y = 0)       { return (      T*)( (      char*)DevPtr<T>::data + y * step); }
-	__CV_CUDA_HOST_DEVICE__ const T* ptr(int y = 0) const { return (const T*)( (const char*)DevPtr<T>::data + y * step); }
+	__CV_CUDA_HOST_DEVICE__       T* ptr(int y = 0)       { return (      T*)( DevPtr<T>::data + y * step); }
+	__CV_CUDA_HOST_DEVICE__ const T* ptr(int y = 0) const { return (const T*)( DevPtr<T>::data + y * step); }
 
 	__CV_CUDA_HOST_DEVICE__       T& operator ()(int y, int x)       { return ptr(y)[x]; }
 	__CV_CUDA_HOST_DEVICE__ const T& operator ()(int y, int x) const { return ptr(y)[x]; }
+	__CV_CUDA_HOST_DEVICE__       T* at(int y, int x)     { return (      T*)( DevPtr<T>::data + y * step + x); }
 };
 
 template <typename T> struct PtrStepSz : public PtrStep<T>
@@ -152,6 +161,8 @@ public:
 
 	template <typename U>
 	explicit PtrStepSz(const PtrStepSz<U>& d) : PtrStep<T>((T*)d.data, d.step), cols(d.cols), rows(d.rows){}
+
+
 
 	int cols;
 	int rows;

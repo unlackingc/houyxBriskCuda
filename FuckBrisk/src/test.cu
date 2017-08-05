@@ -8,10 +8,57 @@
 
 #include "briskCode/BriskScaleSpace.cuh"
 
+#include "opencv2/cudafeatures2d.hpp"
+#include <opencv2/features2d/features2d.hpp>
+#include <opencv/cv.h>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/core/core.hpp>
+
+using namespace std;
 
 int main()
 {
-	cout << "Here" << endl;
+	cv::Mat testImg = cv::imread( "data/test1.jpg" );
+	cv::Mat testImgGray;
+	cv::cvtColor(testImg, testImgGray, CV_BGR2GRAY);
+	if( !testImg.data )
+	{
+		cout <<"load data failed" <<endl;
+	}
+	//cv::imshow("test", testImgGray);
+	//cv::waitKey();
+
+	cv::cuda::GpuMat dstImage1;
+	//ensureSizeIsEnough(cuda::FastFeatureDetector::ROWS_COUNT, 5000, CV_32FC1, _keypoints);
+	//ensureSizeIsEnough(dstSize.height, dstSize.width, CV_8UC1, dstImage1);
+	unsigned char * dstImagedata;
+
+	cudaMalloc(&dstImagedata, testImgGray.rows * testImgGray.cols );
+
+	for( int i = 0; i < testImgGray.rows; i++ )
+	{
+		cudaMemcpy(dstImagedata + i*testImgGray.cols, testImgGray.data + i*testImgGray.step, sizeof(unsigned char)*testImgGray.cols, cudaMemcpyHostToDevice);
+	}
+
+	dstImage1.data = dstImagedata;
+	dstImage1.cols = testImgGray.cols;
+	dstImage1.step = testImgGray.cols;
+	dstImage1.rows = testImgGray.rows;
+
+	cv::Mat retestCpu(testImgGray.rows, testImgGray.cols, CV_8UC1);
+	dstImage1.download(retestCpu);
+
+	cv::imshow("retestCpu", retestCpu);
+	cv::waitKey();
+//(int rows_, int cols_, T* data_, size_t step_)
+	PtrStepSzb imageIn( dstImage1.rows, dstImage1.cols, dstImage1.data, dstImage1.step );
+	cout << "load image done!!" << endl;
+
+	BRISK_Impl a(  dstImage1.rows, dstImage1.cols );
+	a.detectAndCompute(imageIn, a.keypointsG, a.kpSizeG, a.kpScoreG, false);
+
+
+	cout << "end!!" << endl;
 	return 0;
 }
 

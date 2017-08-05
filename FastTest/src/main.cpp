@@ -105,5 +105,36 @@ int main()
     }
 	cout << "starting" << endl;
 
+
+	Ptr<FeatureDetector> detector = BRISK::create();
+
+	vector<KeyPoint> keypoints1;
+	vector<KeyPoint> keypoints2;
+	detector->detect(testImgGray, keypoints1);
+	detector->detect(testImgGray, keypoints2);
+
+    Mat result1;
+    //fastDetector_->convert(fastKpRange, KpRange);
+    drawKeypoints(testImgGray, keypoints2, result1, Scalar::all(-1), drawmode);
+
+    cout <<  "brisk size: "<< keypoints1.size() << endl;
+
+	imshow("result111", result1);
+	waitKey();
+
+/*	for(size_t i = 0; i < keypoints1.size(); ++i)
+	{
+	  const KeyPoint& kp = keypoints1[i];
+	  ASSERT_NE(kp.angle, -1);
+	}
+
+	for(size_t i = 0; i < keypoints2.size(); ++i)
+	{
+	  const KeyPoint& kp = keypoints2[i];
+	  ASSERT_NE(kp.angle, -1);
+	}*/
+
+
+
 	return 0;
 }

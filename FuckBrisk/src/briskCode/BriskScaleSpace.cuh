@@ -22,9 +22,9 @@ public:
   {
 	  if( ptrcount == 0 )
 	  {
-		  cudaFree(locTemp);//todo: 小心隐形调用引起不必要的释放
-		  cudaFree(img_.data);
-		  cudaFree(scores_.data);
+		  CUDA_CHECK_RETURN(cudaFree(locTemp));//todo: 小心隐形调用引起不必要的释放
+		  CUDA_CHECK_RETURN(cudaFree(img_.data));
+		  CUDA_CHECK_RETURN(cudaFree(scores_.data));
 	  }
   }
 
@@ -123,10 +123,10 @@ public:
   {
 	  if( ptrcount == 0 )
 	  {
-		cudaFree(scoreTemp);
+		CUDA_CHECK_RETURN(cudaFree(scoreTemp));
 		for (int i = 0; i < layers_; i++)
 		{
-			cudaFree( kpsLoc[i]  );
+			CUDA_CHECK_RETURN(cudaFree( kpsLoc[i]  ));
 		}
 	  }
   }
@@ -315,12 +315,6 @@ const unsigned int BRISK_Impl::n_rot_ = 1024; // discretization of the rotation 
 
 const float BriskScaleSpace::safetyFactor_ = 1.0f;
 const float BriskScaleSpace::basicSize_ = 12.0f;
-
-
-#ifndef CUDA_CHECK_RETURN
-  #define CUDA_CHECK_RETURN(value) CheckCudaErrorAux(__FILE__,__LINE__, #value, value)
-#endif
-
 
 //wangwang-1
 
@@ -669,10 +663,10 @@ void BriskLayerOne::resize2( const PtrStepSzb& srcimg, PtrStepSzb& dstimg )
 	dstSize.width = oDstImageROI.width ;//+ (srcSize.width%3==0)?0:1;
 
 
-	cudaMalloc(&(dstimg.data), dstSize.height * dstSize.width );
+	CUDA_CHECK_RETURN(cudaMalloc(&(dstimg.data), dstSize.height * dstSize.width ));
 
 	///int patch = dstSize.width;
-	//cudaMallocPitch( &(dstimg.data), &patch, dstSize.width, dstSize.height );
+	//CUDA_CHECK_RETURN(cudaMallocPitch( &(dstimg.data), &patch, dstSize.width, dstSize.height ));
 
 	dstimg.cols = dstSize.width;
 	dstimg.rows = dstSize.height;
@@ -712,10 +706,10 @@ void BriskLayerOne::resize3_2( const PtrStepSzb& srcimg, PtrStepSzb& dstimg )
 	dstSize.width = oDstImageROI.width ;//+ (srcSize.width%3==0)?0:1;
 
 
-	cudaMalloc(&(dstimg.data), dstSize.height * dstSize.width );
+	CUDA_CHECK_RETURN(cudaMalloc(&(dstimg.data), dstSize.height * dstSize.width ));
 
 	///int patch = dstSize.width;
-	//cudaMallocPitch( &(dstimg.data), &patch, dstSize.width, dstSize.height );
+	//CUDA_CHECK_RETURN(cudaMallocPitch( &(dstimg.data), &patch, dstSize.width, dstSize.height ));
 
 	dstimg.cols = dstSize.width;
 	dstimg.rows = dstSize.height;
@@ -826,18 +820,18 @@ BriskScaleSpace::getKeypoints(const int threshold_, float2* keypoints, float* kp
     //const size_t num = agastPoints[0].size();
 
   void* counter_ptr;
-  cudaGetSymbolAddress(&counter_ptr, g_counter1) ;
+  CUDA_CHECK_RETURN(cudaGetSymbolAddress(&counter_ptr, g_counter1));
 
-  cudaMemsetAsync(counter_ptr, 0, sizeof(unsigned int));
+  CUDA_CHECK_RETURN(cudaMemsetAsync(counter_ptr, 0, sizeof(unsigned int)));
 
     refineKernel1<<<kpsCount[0]/(32*4)+1,32*4,0>>>(  *this,  keypoints,  kpSize,  kpScore, threshold_, 0 );
 
 
-  cudaGetLastError() ;//todo: cudaSafeCall
+  CUDA_CHECK_RETURN(cudaGetLastError());//todo: cudaSafeCall
 
-  cudaMemcpyAsync(&kpsCountAfter[0], counter_ptr, sizeof(unsigned int), cudaMemcpyDeviceToHost) ;//todo: cudaSafeCall
+  CUDA_CHECK_RETURN(cudaMemcpyAsync(&kpsCountAfter[0], counter_ptr, sizeof(unsigned int), cudaMemcpyDeviceToHost));//todo: cudaSafeCall
 
-  cudaStreamSynchronize(NULL) ;//todo: cudaSafeCall
+  CUDA_CHECK_RETURN(cudaStreamSynchronize(NULL));//todo: cudaSafeCall
 
    /* for (size_t n = 0; n < num; n++)
     {
@@ -872,9 +866,9 @@ BriskScaleSpace::getKeypoints(const int threshold_, float2* keypoints, float* kp
   float x, y, scale, score;
 
   void* counter_ptr;
-  cudaGetSymbolAddress(&counter_ptr, g_counter1) ;
+  CUDA_CHECK_RETURN(cudaGetSymbolAddress(&counter_ptr, g_counter1));
 
-    cudaMemsetAsync(counter_ptr, 0, sizeof(unsigned int));
+    CUDA_CHECK_RETURN(cudaMemsetAsync(counter_ptr, 0, sizeof(unsigned int)));
 
     dim3 grid;
     grid.x = layers_;
@@ -884,11 +878,11 @@ BriskScaleSpace::getKeypoints(const int threshold_, float2* keypoints, float* kp
     refineKernel2<<<grid,32,0>>>(  *this,  keypoints,  kpSize,  kpScore, threshold_ );
 
 
-  cudaGetLastError() ;//todo: cudaSafeCall
+  CUDA_CHECK_RETURN(cudaGetLastError());//todo: cudaSafeCall
 
-  cudaMemcpyAsync(&kpsCountAfter[0], counter_ptr, sizeof(unsigned int), cudaMemcpyDeviceToHost) ;//todo: cudaSafeCall
+  CUDA_CHECK_RETURN(cudaMemcpyAsync(&kpsCountAfter[0], counter_ptr, sizeof(unsigned int), cudaMemcpyDeviceToHost));//todo: cudaSafeCall
 
-  cudaStreamSynchronize(NULL) ;//todo: cudaSafeCall
+  CUDA_CHECK_RETURN(cudaStreamSynchronize(NULL));//todo: cudaSafeCall
 
   return kpsCountAfter[0];
 
@@ -2293,13 +2287,13 @@ __host__ BRISK_Impl::~BRISK_Impl()
 {
 	if( ptrcount == 0 )
 	{
-		cudaFree(patternPoints_);
-		cudaFree(shortPairs_);
-		cudaFree(longPairs_);
-		cudaFree (scaleList_);
-		cudaFree (sizeList_);
-		cudaFree(descriptorsG.data);
-		cudaFree(_integralG.data);
+		CUDA_CHECK_RETURN(cudaFree(patternPoints_));
+		CUDA_CHECK_RETURN(cudaFree(shortPairs_));
+		CUDA_CHECK_RETURN(cudaFree(longPairs_));
+		CUDA_CHECK_RETURN(cudaFree (scaleList_));
+		CUDA_CHECK_RETURN(cudaFree (sizeList_));
+		CUDA_CHECK_RETURN(cudaFree(descriptorsG.data));
+		CUDA_CHECK_RETURN(cudaFree(_integralG.data));
 	}
 }
 
@@ -2716,20 +2710,20 @@ BRISK_Impl::computeDescriptorsAndOrOrientation(PtrStepSzb _image, float2* keypoi
   //std::vector<int> kscales; // remember the scale per keypoint
   //kscales.resize(ksize);
   void* counter_ptr;
-  cudaGetSymbolAddress(&counter_ptr, g_counter1) ;
+  CUDA_CHECK_RETURN(cudaGetSymbolAddress(&counter_ptr, g_counter1));
 
-  cudaMemsetAsync(counter_ptr, 0, sizeof(unsigned int));
+  CUDA_CHECK_RETURN(cudaMemsetAsync(counter_ptr, 0, sizeof(unsigned int)));
 
  // deleteBorderkernel( BRISK_Impl briskImpl, const int ksize,  float2* keypoints, float* kpSize, float* kpScore, PtrStepSzb _image )
 
   deleteBorderkernel<<<ksize/32 + 1,32>>>(  *this, ksize, keypoints, kpSize, kpScore, _image );
 
-  cudaGetLastError() ;//todo: cudaSafeCall
+  CUDA_CHECK_RETURN(cudaGetLastError());//todo: cudaSafeCall
 
   int temp;
-  cudaMemcpyAsync(&temp, counter_ptr, sizeof(unsigned int), cudaMemcpyDeviceToHost) ;//todo: cudaSafeCall
+  CUDA_CHECK_RETURN(cudaMemcpyAsync(&temp, counter_ptr, sizeof(unsigned int), cudaMemcpyDeviceToHost));//todo: cudaSafeCall
 
-  cudaStreamSynchronize(NULL) ;//todo: cudaSafeCall
+  CUDA_CHECK_RETURN(cudaStreamSynchronize(NULL));//todo: cudaSafeCall
 
   // first, calculate the integral image over the whole image:
   // current integral image
@@ -2940,9 +2934,10 @@ BRISK_Impl::generateKernel(const float* radiusList,
   free(indexChange);
 
 
-  cudaMemcpy(patternPoints_,patternPoints_i,sizeof(BriskPatternPoint)*points_ * scales_ * n_rot_,cudaMemcpyHostToDevice);
-  cudaMemcpy(scaleList_,scaleList_i,sizeof(float)*scales_,cudaMemcpyHostToDevice);
-  cudaMemcpy(sizeList_,sizeList_i,sizeof(unsigned int)*scales_,cudaMemcpyHostToDevice);
+  cout << "before copy,size: " << sizeof(BriskPatternPoint)*points_ * scales_ * n_rot_ << endl;
+  CUDA_CHECK_RETURN(cudaMemcpy(patternPoints_,patternPoints_i,sizeof(BriskPatternPoint)*points_ * scales_ * n_rot_,cudaMemcpyHostToDevice));
+  CUDA_CHECK_RETURN(cudaMemcpy(scaleList_,scaleList_i,sizeof(float)*scales_,cudaMemcpyHostToDevice));
+  CUDA_CHECK_RETURN(cudaMemcpy(sizeList_,sizeList_i,sizeof(unsigned int)*scales_,cudaMemcpyHostToDevice));
   cudaMemcpy(shortPairs_,shortPairs_i,sizeof(BriskShortPair)*points_ * (points_ - 1) / 2,cudaMemcpyHostToDevice);
   cudaMemcpy(longPairs_,longPairs_i,sizeof(BriskLongPair)*points_ * (points_ - 1) / 2,cudaMemcpyHostToDevice);
 

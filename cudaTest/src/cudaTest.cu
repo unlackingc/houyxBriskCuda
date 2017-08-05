@@ -8,17 +8,24 @@
  ============================================================================
  */
 
-#include <iostream>
+
 #include <numeric>
 #include <stdlib.h>
 #include "cuda_types.hpp"
 #include <assert.h>
-#include <cuda_runtime.h>
-#include <cuda.h>
 #include "memory.h"
 #include "string.h"
 
 using namespace std;
+
+
+typedef int myInt;
+
+/*ostream& operator<<(ostream& out, const myInt& s)
+{
+    out << "Reload :: " << (int)(s);
+    return out;
+}*/
 
 
 const int size = 15;
@@ -31,6 +38,8 @@ static void CheckCudaErrorAux (const char *file, unsigned line, const char *stat
 	std::cerr << statement<<" returned " << cudaGetErrorString(err) << "("<<err<< ") at "<<file<<":"<<line << std::endl;
 	exit (1);
 }
+
+
 
 
 class VV1
@@ -242,6 +251,14 @@ int main(void)
 	{
 		cout << "after1::\t" << i << "::: " << tempOuter[i] << endl;
 	}
+
+	cout << "hehe" << endl;
+
+	PtrStepSzi cvptr( 2, size/2, a.vv1.testfuck, size/2 );
+
+	pout((cvptr.at(1,7)) );
+	pout(&(cvptr(1,7)) );
+	//cout << endl;
 
 	return 0;
 }

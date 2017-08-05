@@ -7,6 +7,9 @@
 
 #ifndef CUDA_TYPES_HPP_
 #define CUDA_TYPES_HPP_
+#include <iostream>
+#include <cuda_runtime.h>
+#include <cuda.h>
 
 #ifndef __cplusplus
 #  error cuda_types.hpp header must be compiled as C++
@@ -24,6 +27,14 @@
     #define __CV_CUDA_HOST_DEVICE__
 #endif
 
+
+template<typename T> void pout( T* ptr, bool endline = true  )
+{
+	T temp;
+	cudaMemcpy(&temp, ptr, sizeof(T), cudaMemcpyDeviceToHost);
+	std::cout << "====GPU====(" << temp << ")";
+	std::cout << std::endl;
+}
 
 template <typename T> struct DevPtr
 {
@@ -57,11 +68,13 @@ template <typename T> struct PtrStep : public DevPtr<T>
 
 	size_t step;
 
-	__CV_CUDA_HOST_DEVICE__       T* ptr(int y = 0)       { return (      T*)( (      char*)DevPtr<T>::data + y * step); }
-	__CV_CUDA_HOST_DEVICE__ const T* ptr(int y = 0) const { return (const T*)( (const char*)DevPtr<T>::data + y * step); }
+	__CV_CUDA_HOST_DEVICE__       T* ptr(int y = 0)       { return (      T*)( DevPtr<T>::data + y * step); }
+	__CV_CUDA_HOST_DEVICE__ const T* ptr(int y = 0) const { return (const T*)( DevPtr<T>::data + y * step); }
 
 	__CV_CUDA_HOST_DEVICE__       T& operator ()(int y, int x)       { return ptr(y)[x]; }
 	__CV_CUDA_HOST_DEVICE__ const T& operator ()(int y, int x) const { return ptr(y)[x]; }
+
+	__CV_CUDA_HOST_DEVICE__       T* at(int y, int x)     { return (      T*)( DevPtr<T>::data + y * step + x); }
 };
 
 template <typename T> struct PtrStepSz : public PtrStep<T>
