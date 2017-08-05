@@ -9,20 +9,32 @@
 #define BRISKSCALESPACE_CUH_
 
 #include "../libsrc/AgastCuda/AgastCuda.cuh"
-
+#include "npp.h"
 //class BriskLayerOne;
 
 class BriskLayerOne
 {
 
 public:
+  int ptrcount;
 
   ~BriskLayerOne()
   {
-	  cudaFree(locTemp);//todo: 小心隐形调用引起不必要的释放
-	  cudaFree(img_.data);
-	  cudaFree(scores_.data);
+	  if( ptrcount == 0 )
+	  {
+		  cudaFree(locTemp);//todo: 小心隐形调用引起不必要的释放
+		  cudaFree(img_.data);
+		  cudaFree(scores_.data);
+	  }
   }
+
+  BriskLayerOne(const BriskLayerOne& c):agast(c.agast)
+	{
+		//val = c.val;
+		*this=c;
+
+		ptrcount = c.ptrcount+1;
+	}
 
   struct CommonParams
   {
@@ -94,7 +106,7 @@ public:
 
   BriskLayerOne(const BriskLayerOne& layer, int mode);
 
-  BriskLayerOne():agast(640)
+  BriskLayerOne():agast(640),ptrcount(0)
   {}//todo: check no bug
 
 };
@@ -104,17 +116,32 @@ public:
 class BriskScaleSpace
 {
 public:
+	int ptrcount;
   // construct telling the octaves number:
   BriskScaleSpace(int _octaves = 3);
   ~BriskScaleSpace()
   {
-	  cudaFree(scoreTemp);
-	    for (int i = 0; i < layers_; i++)
-	    {
-	    	cudaFree( kpsLoc[i]  );
-	    }
+	  if( ptrcount == 0 )
+	  {
+		cudaFree(scoreTemp);
+		for (int i = 0; i < layers_; i++)
+		{
+			cudaFree( kpsLoc[i]  );
+		}
+	  }
   }
 
+  BriskScaleSpace(const BriskScaleSpace& c)
+	{
+		//val = c.val;
+		*this=c;
+		ptrcount = c.ptrcount+1;
+
+		for(int i = 0; i< 8; i++  )
+		{
+			pyramid_[0].ptrcount ++;
+		}
+	}
   // construct the image pyramids
   void
   constructPyramid(const PtrStepSzb& image);
@@ -185,12 +212,20 @@ __global__ void refineKernel2( BriskScaleSpace space,float2* keypoints, float* k
 class BRISK_Impl
 {
 public:
-    explicit BRISK_Impl(int thresh=30, int octaves=3, float patternScale=1.0f);
+	int ptrcount;
+    explicit BRISK_Impl(int rows, int cols, int thresh=30, int octaves=3, float patternScale=1.0f);
     // custom setup
-    explicit BRISK_Impl(const std::vector<float> &radiusList, const std::vector<int> &numberList,
-        float dMax=5.85f, float dMin=8.2f, const std::vector<int> indexChange=std::vector<int>());
+/*    explicit BRISK_Impl(const std::vector<float> &radiusList, const std::vector<int> &numberList,
+        float dMax=5.85f, float dMin=8.2f, const std::vector<int> indexChange=std::vector<int>());*/
 
     __host__ ~BRISK_Impl();
+
+    BRISK_Impl(const BRISK_Impl& c)
+  	{
+  		//val = c.val;
+  		*this=c;
+  		ptrcount = c.ptrcount+1;
+  	}
 
     // call this to generate the kernel:
     // circle of radius r (pixels), with n points;
@@ -297,7 +332,7 @@ const float BriskScaleSpace::basicSize_ = 12.0f;
  * @param offset_in
  */
 // construct a layer
-BriskLayerOne::BriskLayerOne(const PtrStepSzb& img_in, float scale_in, float offset_in):agast(img_.step)
+BriskLayerOne::BriskLayerOne(const PtrStepSzb& img_in, float scale_in, float offset_in):agast(img_.step),ptrcount(0)
 {
   img_ = img_in;
 
@@ -324,7 +359,7 @@ BriskLayerOne::BriskLayerOne(const PtrStepSzb& img_in, float scale_in, float off
  * @param mode
  */
 // derive a layer
-BriskLayerOne::BriskLayerOne(const BriskLayerOne& layer, int mode):  agast((mode == CommonParams::HALFSAMPLE)?layer.img().cols / 2:2 * (layer.img().cols / 3))
+BriskLayerOne::BriskLayerOne(const BriskLayerOne& layer, int mode): ptrcount(0), agast((mode == CommonParams::HALFSAMPLE)?layer.img().cols / 2:2 * (layer.img().cols / 3))
 {
   if (mode == CommonParams::HALFSAMPLE)
   {
@@ -332,8 +367,7 @@ BriskLayerOne::BriskLayerOne(const BriskLayerOne& layer, int mode):  agast((mode
 
     unsigned char* imgData;
     //PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
-    img_ = PtrStepSzb(1,false, layer.img().rows / 2, layer.img().cols / 2, imgData, layer.img().cols / 2);
-
+    img_ = PtrStepSzb(layer.img().rows / 2, layer.img().cols / 2, imgData, layer.img().cols / 2);
     halfsample(layer.img(), img_);
 
     scale_ = layer.scale() * 2;
@@ -345,7 +379,7 @@ BriskLayerOne::BriskLayerOne(const BriskLayerOne& layer, int mode):  agast((mode
 
     unsigned char* imgData;
     //PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
-    img_ = PtrStepSzb(1,false, 2 * (layer.img().rows / 3), 2 * (layer.img().cols / 3), imgData, 2 * (layer.img().cols / 3));
+    img_ = PtrStepSzb( 2 * (layer.img().rows / 3), 2 * (layer.img().cols / 3), imgData, 2 * (layer.img().cols / 3));
 
     twothirdsample(layer.img(), img_);
     scale_ = layer.scale() * 1.5f;
@@ -356,6 +390,7 @@ BriskLayerOne::BriskLayerOne(const BriskLayerOne& layer, int mode):  agast((mode
   //PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
   scores_ = PtrStepSzi(1,true, img_.rows, img_.cols, scoreData, img_.cols);
   newArray( locTemp, maxPointNow, false );
+  agast = Agast( img_.step );
   //agast = Agast(img_.step);
 }
 /***
@@ -610,11 +645,88 @@ BriskLayerOne::value(const PtrStepSzi mat, float xf, float yf, float scale_in) c
 // half sampling
 void BriskLayerOne::resize2( const PtrStepSzb& srcimg, PtrStepSzb& dstimg )
 {
+
+	float nScaleFactor = 1.0/2.0;
+	float shiftFactor = 0;
+
+	NppiSize srcSize,dstSize;
+	srcSize.height = srcimg.rows;
+	srcSize.width = srcimg.cols;
+
+
+	NppiInterpolationMode eInterploationMode = NPPI_INTER_SUPER;
+
+	NppiRect oSrcImageROI = {0,0,srcSize.width, srcSize.height};
+	NppiRect oDstImageROI;
+
+	nppiGetResizeRect(oSrcImageROI, &oDstImageROI,
+	                                        nScaleFactor,
+	                                        nScaleFactor,
+	                                        shiftFactor, shiftFactor, eInterploationMode);
+
+
+	dstSize.height = oDstImageROI.height ;//+ (srcSize.height%3==0)?0:1;
+	dstSize.width = oDstImageROI.width ;//+ (srcSize.width%3==0)?0:1;
+
+
+	cudaMalloc(&(dstimg.data), dstSize.height * dstSize.width );
+
+	///int patch = dstSize.width;
+	//cudaMallocPitch( &(dstimg.data), &patch, dstSize.width, dstSize.height );
+
+	dstimg.cols = dstSize.width;
+	dstimg.rows = dstSize.height;
+	dstimg.step = dstSize.width;
+
+	nppiResizeSqrPixel_8u_C1R(srcimg.data, srcSize, srcimg.step, oSrcImageROI,
+			dstimg.data, dstimg.step, oDstImageROI,
+	        nScaleFactor,
+	        nScaleFactor,
+	        shiftFactor, shiftFactor, eInterploationMode);
   return;
 }
 
 void BriskLayerOne::resize3_2( const PtrStepSzb& srcimg, PtrStepSzb& dstimg )
 {
+
+	float nScaleFactor = 2.0/3.0;
+	float shiftFactor = 0;
+
+	NppiSize srcSize,dstSize;
+	srcSize.height = srcimg.rows;
+	srcSize.width = srcimg.cols;
+
+
+	NppiInterpolationMode eInterploationMode = NPPI_INTER_SUPER;
+
+	NppiRect oSrcImageROI = {0,0,srcSize.width, srcSize.height};
+	NppiRect oDstImageROI;
+
+	nppiGetResizeRect(oSrcImageROI, &oDstImageROI,
+	                                        nScaleFactor,
+	                                        nScaleFactor,
+	                                        shiftFactor, shiftFactor, eInterploationMode);
+
+
+	dstSize.height = oDstImageROI.height ;//+ (srcSize.height%3==0)?0:1;
+	dstSize.width = oDstImageROI.width ;//+ (srcSize.width%3==0)?0:1;
+
+
+	cudaMalloc(&(dstimg.data), dstSize.height * dstSize.width );
+
+	///int patch = dstSize.width;
+	//cudaMallocPitch( &(dstimg.data), &patch, dstSize.width, dstSize.height );
+
+	dstimg.cols = dstSize.width;
+	dstimg.rows = dstSize.height;
+	dstimg.step = dstSize.width;
+
+	nppiResizeSqrPixel_8u_C1R(srcimg.data, srcSize, srcimg.step, oSrcImageROI,
+			dstimg.data, dstimg.step, oDstImageROI,
+	        nScaleFactor,
+	        nScaleFactor,
+	        shiftFactor, shiftFactor, eInterploationMode);
+
   return;
 }
 
@@ -646,7 +758,7 @@ BriskLayerOne::twothirdsample(const PtrStepSzb& srcimg, PtrStepSzb& dstimg)
 
 // construct the image pyramids
 // construct telling the octaves number:
-BriskScaleSpace::BriskScaleSpace(int _octaves)
+BriskScaleSpace::BriskScaleSpace(int _octaves):ptrcount(0)
 {
   if (_octaves == 0)
     layers_ = 1;
@@ -2179,13 +2291,16 @@ BRISK_Impl::computeKeypointsNoOrientation(PtrStepSzb _image, float2* keypoints, 
 //todo: 更正
 __host__ BRISK_Impl::~BRISK_Impl()
 {
-	cudaFree(patternPoints_);
-	cudaFree(shortPairs_);
-	cudaFree(longPairs_);
-	cudaFree (scaleList_);
-	cudaFree (sizeList_);
-
-  cudaFree(descriptorsG.data);
+	if( ptrcount == 0 )
+	{
+		cudaFree(patternPoints_);
+		cudaFree(shortPairs_);
+		cudaFree(longPairs_);
+		cudaFree (scaleList_);
+		cudaFree (sizeList_);
+		cudaFree(descriptorsG.data);
+		cudaFree(_integralG.data);
+	}
 }
 
 /***
@@ -2558,7 +2673,12 @@ __global__ void generateDesKernel( BRISK_Impl briskImpl, const int ksize,  float
 //todo: imple
 void integral(PtrStepSzb _image,PtrStepSzi ret)
 {
-	//PtrStepSzi _integralG imit
+	NppiSize dstSize;
+	dstSize.height = _image.rows;
+	dstSize.width = _image.cols;
+
+	nppiIntegral_8u32s_C1R (_image.data, _image.step, (Npp32s*)(ret.data), ret.step, dstSize, 0 );
+	//suppose data has been init
 }
 
 /***
@@ -2833,7 +2953,7 @@ BRISK_Impl::generateKernel(const float* radiusList,
   free( patternPoints_i );
 }
 
-BRISK_Impl::BRISK_Impl(int thresh, int octaves_in, float patternScale)
+BRISK_Impl::BRISK_Impl(  int rows, int cols, int thresh, int octaves_in, float patternScale):ptrcount(0)
 {
 /*	- Member 'sizeList_' was not initialized in this constructor done
 	- Member 'points_' was not initialized in this constructor done
@@ -2884,10 +3004,16 @@ BRISK_Impl::BRISK_Impl(int thresh, int octaves_in, float patternScale)
 
 	newArray( kpScoreG,maxPointNow,1 );
 	newArray( kpSizeG,maxPointNow,1 );
+
 	unsigned char* temp;
 
 	//(int isHost, bool ifset_, int rows_, int cols_, T* data_, size_t step_)
 	descriptorsG = PtrStepSzb(1,true,1,maxPointNow*strings_,temp,maxPointNow*strings_);
+
+
+	//todo: make sure is right
+	int* temp1;
+	_integralG = PtrStepSzi(1,true,rows + 1,cols+1,temp1,cols+1);
 
 	//scores_ = PtrStepSzi(1,true, img_.rows, img_.cols, scoreData, img_.cols);
     //PtrStepSzi _integralG; this will init in the integral function

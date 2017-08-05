@@ -33,6 +33,35 @@ static void CheckCudaErrorAux (const char *file, unsigned line, const char *stat
 }
 
 
+class VV1
+{
+public:
+	int val;
+	int myarray[size];
+	int* testfuck;
+	int count;
+
+
+	VV1();
+
+	~VV1()
+	{
+		cout << "in ~VV1" << endl;
+		//if( testfuck != NULL )
+		if( count == 0 )
+			cudaFree(testfuck);
+	}
+
+	VV1(const VV1& c)
+	{
+		cout << "in VV1 copy" << endl;
+		//val = c.val;
+		*this=c;
+		count = c.count+1;
+	}
+
+};
+
 class VV
 {
 public:
@@ -41,24 +70,33 @@ public:
 	int val;
 	int myarray[size];
 	int* testfuck;
+	int count;
+	VV1 vv1;
 
 	VV();
 
 	~VV()
 	{
+		cout << "in ~VV" << endl;
 		//if( testfuck != NULL )
+		if( count == 0 )
 			cudaFree(testfuck);
 	}
 
-	VV(const VV& C)
+	VV(const VV& c):vv1(c.vv1)
 	{
-		a = C.a;
+		cout << "in VV copy" << endl;
+		//val = c.val;
+		*this=c;
+		count = c.count+1;
+		vv1.count = c.vv1.count + 1;
 	}
 
 	__device__ void changeSelf()
 	{
 		val = val + 3;
 	}
+
 
 	void testGlobal();
 };
@@ -70,19 +108,35 @@ __global__ void setVal( int* testfuck, int size )
 }
 
 
-VV::VV():val(11)
+VV::VV():val(11),count(0)
 	{
+	cout << "in VV" << endl;
 		cudaMalloc((void**)&testfuck, sizeof(int)*size);
 
-		cout << "what's the fuck3" << endl;
+		//cout << "what's the fuck3" << endl;
 		//myarray = new int[size];
 		for( int i = 0; i < size; i++ )
 		{
-			myarray[i] = i;
+			myarray[i] = i*2;
 			//testr[i] = size - i;
 		}
 		setVal<<<1,size>>>(testfuck,size);
 		//cout << "what's the fuck4" << endl;
+	}
+
+VV1::VV1():val(1),count(0)
+	{
+	cout << "in VV1" << endl;
+		cudaMalloc((void**)&testfuck, sizeof(int)*size);
+
+		//cout << "what's the fuck6" << endl;
+		//myarray = new int[size];
+		for( int i = 0; i < size; i++ )
+		{
+			myarray[i] = i*2;
+			//testr[i] = size - i;
+		}
+		setVal<<<1,size>>>(testfuck,size);
 	}
 
 
@@ -95,6 +149,15 @@ __global__ void changeVal( VV* a )
 	//a->testr[id] = a->testr[id] - 2*a->testr[id];
 }
 
+
+__global__ void changeVal1( VV a )
+{
+	int id = threadIdx.x + blockIdx.x * blockDim.x;
+	a.myarray[id] =a.myarray[id]*2;
+	a.val = 2*a.val;
+	a.changeSelf();
+	//a->testr[id] = a->testr[id] - 2*a->testr[id];
+}
 
 __global__ void getVal( VV a, int* ret )
 {
@@ -143,7 +206,8 @@ void VV::testGlobal()
 __global__ void kernel(VV a)
 {
 	int id = threadIdx.x + blockIdx.x * blockDim.x;
-	a.testfuck[id] = 11;
+	a.testfuck[id] = a.myarray[id];
+	a.vv1.testfuck[id] = id*10;
 }
 
 
@@ -158,7 +222,7 @@ int main(void)
 
 	memset( tempOuter, 0, size*sizeof(int) );
 
-	cudaMemcpy(tempOuter,a.testfuck,sizeof(int)*size,cudaMemcpyDeviceToHost);
+	cudaMemcpy(tempOuter,a.vv1.testfuck,sizeof(int)*size,cudaMemcpyDeviceToHost);
 
 
 	for( int i = 0; i < size; i ++ )
@@ -171,7 +235,7 @@ int main(void)
 
 	memset( tempOuter, 0, size*sizeof(int) );
 
-	cudaMemcpy(tempOuter,a.testfuck,sizeof(int)*size,cudaMemcpyDeviceToHost);
+	cudaMemcpy(tempOuter,a.vv1.testfuck,sizeof(int)*size,cudaMemcpyDeviceToHost);
 
 
 	for( int i = 0; i < size; i ++ )

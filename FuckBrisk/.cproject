@@ -34,6 +34,8 @@
 							<tool id="nvcc.linker.base.1132933019" name="NVCC Linker" superClass="nvcc.linker.base">
 								<option id="nvcc.linker.option.libs.357023937" name="Libraries (-l)" superClass="nvcc.linker.option.libs" valueType="libs">
 									<listOptionValue builtIn="false" value="opencv_cudabgsegm"/>
+									<listOptionValue builtIn="false" value="nppc"/>
+									<listOptionValue builtIn="false" value="nppi"/>
 									<listOptionValue builtIn="false" value="opencv_cudaobjdetect"/>
 									<listOptionValue builtIn="false" value="opencv_cudastereo"/>
 									<listOptionValue builtIn="false" value="opencv_shape"/>
@@ -64,8 +66,10 @@
 								</option>
 								<option id="nvcc.linker.option.paths.1355916416" name="Library search path (-L)" superClass="nvcc.linker.option.paths" valueType="libPaths">
 									<listOptionValue builtIn="false" value="/usr/local/lib"/>
+									<listOptionValue builtIn="false" value="&quot;${cuda_samples_dir:/ImageProcesser}/7_CUDALibraries/common/FreeImage/lib/linux/x86_64&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${cuda_samples_dir:/ImageProcesser}/7_CUDALibraries/common/FreeImage/lib/linux&quot;"/>
 								</option>
-								<option id="nvcc.linker.option.cudart.2007833091" name="CUDA Runtime Library:" superClass="nvcc.linker.option.cudart" value="nvcc.linker.option.cudart.shared" valueType="enumerated"/>
+								<option id="nvcc.linker.option.cudart.2007833091" name="CUDA Runtime Library:" superClass="nvcc.linker.option.cudart" value="nvcc.linker.option.cudart.static" valueType="enumerated"/>
 								<inputType id="nvcc.linker.input.1378957159" superClass="nvcc.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
 									<additionalInput kind="additionalinput" paths="$(LIBS)"/>
@@ -156,4 +160,5 @@
 		</scannerConfigBuildInfo>
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
+	<storageModule moduleId="refreshScope"/>
 </cproject>

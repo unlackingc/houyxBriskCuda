@@ -32,9 +32,11 @@
 								<inputType id="nvcc.compiler.input.c.1624606113" superClass="nvcc.compiler.input.c"/>
 							</tool>
 							<tool id="nvcc.linker.base.1809667525" name="NVCC Linker" superClass="nvcc.linker.base">
-								<option id="nvcc.linker.option.cudart.1352806904" superClass="nvcc.linker.option.cudart" value="nvcc.linker.option.cudart.shared" valueType="enumerated"/>
-								<option id="nvcc.linker.option.libs.892554767" superClass="nvcc.linker.option.libs" valueType="libs">
+								<option id="nvcc.linker.option.cudart.1352806904" name="CUDA Runtime Library:" superClass="nvcc.linker.option.cudart" value="nvcc.linker.option.cudart.static" valueType="enumerated"/>
+								<option id="nvcc.linker.option.libs.892554767" name="Libraries (-l)" superClass="nvcc.linker.option.libs" valueType="libs">
 									<listOptionValue builtIn="false" value="opencv_cudabgsegm "/>
+									<listOptionValue builtIn="false" value="nppc"/>
+									<listOptionValue builtIn="false" value="nppi"/>
 									<listOptionValue builtIn="false" value="opencv_cudaobjdetect "/>
 									<listOptionValue builtIn="false" value="opencv_cudastereo "/>
 									<listOptionValue builtIn="false" value="opencv_shape "/>
@@ -63,8 +65,10 @@
 									<listOptionValue builtIn="false" value="opencv_core "/>
 									<listOptionValue builtIn="false" value="opencv_cudev"/>
 								</option>
-								<option id="nvcc.linker.option.paths.2116894318" superClass="nvcc.linker.option.paths" valueType="libPaths">
+								<option id="nvcc.linker.option.paths.2116894318" name="Library search path (-L)" superClass="nvcc.linker.option.paths" valueType="libPaths">
 									<listOptionValue builtIn="false" value="/usr/local/lib"/>
+									<listOptionValue builtIn="false" value="&quot;${cuda_samples_dir:/ImageProcesser}/7_CUDALibraries/common/FreeImage/lib/linux&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${cuda_samples_dir:/ImageProcesser}/7_CUDALibraries/common/FreeImage/lib/linux/x86_64&quot;"/>
 								</option>
 								<inputType id="nvcc.linker.input.137794239" superClass="nvcc.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>

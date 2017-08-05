@@ -58,7 +58,7 @@ all: FastCuda
 FastCuda: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: NVCC Linker'
-	/usr/local/cuda-8.0/bin/nvcc --cudart shared -L/usr/local/lib --relocatable-device-code=false -gencode arch=compute_50,code=compute_50 -gencode arch=compute_50,code=sm_50 -link -o  "FastCuda" $(OBJS) $(USER_OBJS) $(LIBS)
+	/usr/local/cuda-8.0/bin/nvcc --cudart static -L/usr/local/lib -L"/usr/local/cuda-8.0/samples/7_CUDALibraries/common/FreeImage/lib/linux" -L"/usr/local/cuda-8.0/samples/7_CUDALibraries/common/FreeImage/lib/linux/x86_64" --relocatable-device-code=false -gencode arch=compute_50,code=compute_50 -gencode arch=compute_50,code=sm_50 -link -o  "FastCuda" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 

@@ -35,6 +35,11 @@ public:
 		        pixel[k] = offsets[k][0] + offsets[k][1] * step;
 	};
 
+    __host__ __device__ Agast(  const Agast& c )
+	{
+		 *this = c;
+	};
+
 	__device__ int agast_cornerScore_5_8( const unsigned char* ptr, int threshold) const
 	{
 	    int bmin = threshold;

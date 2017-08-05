@@ -8,6 +8,9 @@
 
 #include "FastCuda.h"
 
+#include <npp.h>
+#include <cuda_runtime.h>
+
 
 using namespace std;
 using namespace cv;
@@ -138,6 +141,8 @@ int main()
 	//detectMe(testImgGray.rows, testImgGray.cols, testImgGray.step, testImgGray.data, keyPoints.ptr<short2>(), (int*)score.data, loc.ptr<short2>(), (float*)response.data);
 
 	int count = detectMe1( loadMat(testImgGrayCpu), _keypoints.ptr<short2>(cuda::FastFeatureDetector::LOCATION_ROW), score,  _keypoints.ptr<short2>(cuda::FastFeatureDetector::LOCATION_ROW), _keypoints.ptr<float>(cuda::FastFeatureDetector::RESPONSE_ROW) );
+
+
 	//detectMe(int rows, int cols, unsigned char* image, short2* keyPoints, int* scores, short2* loc, float* response,int threshold=20, int maxPoints=2000, bool ifNoMaxSup = true);
 	_keypoints.cols = count;
     int drawmode = DrawMatchesFlags::DRAW_RICH_KEYPOINTS;
@@ -167,6 +172,77 @@ int main()
     	cout << "key point " <<i << ":\t" << KpRange[i].pt.x <<"\t" << KpRange[i].pt.y <<endl;
     }*/
 	cout << "starting" << endl;
+
+
+
+	//npp Start
+
+
+	float nScaleFactor = 2.0/3.0;
+	float shiftFactor = 0;
+
+	NppiSize srcSize,dstSize;
+	srcSize.height = testImg.rows;
+	srcSize.width = testImg.cols;
+
+
+	//unsigned char * dstImage;
+
+	//cudaMalloc(&dstImage, dstSize.height * dstSize.width );
+
+	NppiInterpolationMode eInterploationMode = NPPI_INTER_SUPER;
+
+
+	NppiRect oSrcImageROI = {0,0,srcSize.width, srcSize.height};
+	NppiRect oDstImageROI;
+
+	nppiGetResizeRect(oSrcImageROI, &oDstImageROI,
+	                                        nScaleFactor,
+	                                        nScaleFactor,
+	                                        shiftFactor, shiftFactor, eInterploationMode);
+
+
+	dstSize.height = oDstImageROI.height ;//+ (srcSize.height%3==0)?0:1;
+	dstSize.width = oDstImageROI.width ;//+ (srcSize.width%3==0)?0:1;
+
+	GpuMat dstImage1;
+	//ensureSizeIsEnough(cuda::FastFeatureDetector::ROWS_COUNT, 5000, CV_32FC1, _keypoints);
+	//ensureSizeIsEnough(dstSize.height, dstSize.width, CV_8UC1, dstImage1);
+	unsigned char * dstImagedata;
+
+	cudaMalloc(&dstImagedata, dstSize.height * dstSize.width );
+	dstImage1.data = dstImagedata;
+	dstImage1.cols = dstSize.width;
+	dstImage1.step = dstSize.width;
+	dstImage1.rows = dstSize.height;
+
+	nppiResizeSqrPixel_8u_C1R(testImgGray.data, srcSize, testImgGray.step, oSrcImageROI,
+			dstImage1.data, dstImage1.step, oDstImageROI,
+	        nScaleFactor,
+	        nScaleFactor,
+	        shiftFactor, shiftFactor, eInterploationMode);
+
+
+	GpuMat integralData;
+	//ensureSizeIsEnough(cuda::FastFeatureDetector::ROWS_COUNT, 5000, CV_32FC1, _keypoints);
+	ensureSizeIsEnough(dstSize.height + 1, dstSize.width + 1, CV_32SC1, integralData);
+	nppiIntegral_8u32s_C1R (dstImage1.data, dstImage1.step, (Npp32s*)(integralData.data), integralData.step, dstSize, 0 );
+	//nppiIntegral_8u32s_C1R (const Npp8u *pSrc, int nSrcStep, Npp32s *pDst, int nDstStep, NppiSize oROI, Npp32s nVal)
+
+	Mat resizedCpu(dstSize.height, dstSize.width, CV_8UC1);
+	Mat resizedCpu1(dstSize.height, dstSize.width, CV_8UC1);
+	Mat resizedCpu2(dstSize.height+1, dstSize.width+1, CV_8UC1);
+	testImgGray.download(resizedCpu);
+	dstImage1.download(resizedCpu1);
+	integralData.download(resizedCpu2);
+	//cudaMemcpy(resizedCpu.data,dstImage,dstSize.width*dstSize.height,cudaMemcpyDeviceToHost);
+
+	printf("haha I'm here");
+
+	imshow("resize_result", resizedCpu);
+	imshow("resize_result11111", resizedCpu1);
+	imshow("resize_result22", resizedCpu2);
+		waitKey();
 
 	return 0;
 }
