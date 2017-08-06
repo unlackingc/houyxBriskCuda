@@ -20,8 +20,10 @@ public:
 
   ~BriskLayerOne()
   {
+	  cout << "almost got me ~BriskLayerOne" << endl;
 	  if( ptrcount == 0 )
 	  {
+		  cout << "got me ~BriskLayerOne" << endl;
 		  CUDA_CHECK_RETURN(cudaFree(locTemp));//todo: 小心隐形调用引起不必要的释放
 		  CUDA_CHECK_RETURN(cudaFree(img_.data));
 		  CUDA_CHECK_RETURN(cudaFree(scores_.data));
@@ -106,7 +108,11 @@ public:
 
   BriskLayerOne(const BriskLayerOne& layer, int mode);
 
-  BriskLayerOne():agast(640),ptrcount(0)
+  void FuckReset(const PtrStepSzb& img_in, float scale = 1.0f, float offset = 0.0f);
+
+  void FuckReset(const BriskLayerOne& layer, int mode);
+
+  BriskLayerOne():agast(640),ptrcount(10)
   {}//todo: check no bug
 
 };
@@ -123,6 +129,7 @@ public:
   {
 	  if( ptrcount == 0 )
 	  {
+		cout << "got me ~BriskScaleSpace" << endl;
 		CUDA_CHECK_RETURN(cudaFree(scoreTemp));
 		for (int i = 0; i < layers_; i++)
 		{
@@ -329,9 +336,11 @@ const float BriskScaleSpace::basicSize_ = 12.0f;
  * @param offset_in
  */
 // construct a layer
-BriskLayerOne::BriskLayerOne(const PtrStepSzb& img_in, float scale_in, float offset_in):agast(img_.step),ptrcount(0)
+void BriskLayerOne::FuckReset(const PtrStepSzb& img_in, float scale_in, float offset_in)
 {
+  agast = Agast(img_.step);
   img_ = img_in;
+
 
   int* scoreData;
   //PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
@@ -347,6 +356,98 @@ BriskLayerOne::BriskLayerOne(const PtrStepSzb& img_in, float scale_in, float off
   //agast = Agast(img_.step);
   /*  makeAgastOffsets(pixel_5_8_, (int)img_.step, AgastFeatureDetector::AGAST_5_8);
   makeAgastOffsets(pixel_9_16_, (int)img_.step, AgastFeatureDetector::OAST_9_16);*/
+
+  //poutp( img_in, "BriskLayerOne_img_in" );
+  cout << "I'm here~" << endl;
+
+  //cout << img_.data << " " << img_in.data << endl;
+  //poutp( img_, "BriskLayerOne_img_" );
+
+  cout << img_.step << " " << img_.cols << " " << img_.rows << endl;
+  bool temp = (img_.data == img_in.data);
+  cout << temp << endl;
+}
+
+
+/***
+ * 降采样出一个新层
+ * @param layer
+ * @param mode
+ */
+// derive a layer
+void BriskLayerOne::FuckReset(const BriskLayerOne& layer, int mode)
+{
+  agast = Agast((mode == CommonParams::HALFSAMPLE)?layer.img().cols / 2:2 * (layer.img().cols / 3));
+  if (mode == CommonParams::HALFSAMPLE)
+  {
+    //img_.create(layer.img().rows / 2, layer.img().cols / 2, CV_8U);
+
+    unsigned char* imgData;
+    //PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
+    img_ = PtrStepSzb(layer.img().rows / 2, layer.img().cols / 2, imgData, layer.img().cols / 2);
+    halfsample(layer.img(), img_);
+
+    scale_ = layer.scale() * 2;
+    offset_ = 0.5f * scale_ - 0.5f;
+  }
+  else
+  {
+    //img_.create(2 * (layer.img().rows / 3), 2 * (layer.img().cols / 3), CV_8U);
+
+    unsigned char* imgData;
+    //PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
+    img_ = PtrStepSzb( 2 * (layer.img().rows / 3), 2 * (layer.img().cols / 3), imgData, 2 * (layer.img().cols / 3));
+
+    twothirdsample(layer.img(), img_);
+    scale_ = layer.scale() * 1.5f;
+    offset_ = 0.5f * scale_ - 0.5f;
+  }
+
+  int* scoreData;
+  //PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
+  scores_ = PtrStepSzi(1,true, img_.rows, img_.cols, scoreData, img_.cols);
+  newArray( locTemp, maxPointNow, false );
+  agast = Agast( img_.step );
+  //agast = Agast(img_.step);
+}
+
+/***
+ * 使用现有img创造一个层，适用于copy
+ * @param img_in
+ * @param scale_in
+ * @param offset_in
+ */
+// construct a layer
+BriskLayerOne::BriskLayerOne(const PtrStepSzb& img_in, float scale_in, float offset_in):agast(img_.step),ptrcount(0)
+{
+
+  img_ = img_in;
+
+
+  int* scoreData;
+  //PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
+  scores_ = PtrStepSzi(1,true, img_.rows, img_.cols, scoreData, img_.cols);
+  //scores_ = cv::Mat_<unsigned char>::zeros(img_in.rows, img_in.cols);
+  // attention: this means that the passed image reference must point to persistent memory
+  scale_ = scale_in;
+  offset_ = offset_in;
+
+
+  newArray( locTemp, maxPointNow, true );
+  // create an agast detector
+  //agast = Agast(img_.step);
+  /*  makeAgastOffsets(pixel_5_8_, (int)img_.step, AgastFeatureDetector::AGAST_5_8);
+  makeAgastOffsets(pixel_9_16_, (int)img_.step, AgastFeatureDetector::OAST_9_16);*/
+
+  //poutp( img_in, "BriskLayerOne_img_in" );
+  cout << "I'm here~" << endl;
+
+  //cout << img_.data << " " << img_in.data << endl;
+  //poutp( img_, "BriskLayerOne_img_" );
+
+  cout << img_.step << " " << img_.cols << " " << img_.rows << endl;
+  bool temp = (img_.data == img_in.data);
+  cout << temp << endl;
 }
 
 
@@ -396,6 +497,7 @@ BriskLayerOne::BriskLayerOne(const BriskLayerOne& layer, int mode): ptrcount(0),
 int
 BriskLayerOne::getAgastPoints(int threshold, short2* keypoints, float* scores)
 {
+  //poutp( img_, "getAgastPoints" );
   //oast_9_16_->setThreshold(threshold);
   //oast_9_16_->detect(img_, keypoints);
 
@@ -774,18 +876,30 @@ BriskScaleSpace::BriskScaleSpace(int _octaves):ptrcount(0)
 void
 BriskScaleSpace::constructPyramid(const PtrStepSzb& image)
 {
-  assert( layers_ == 8 );
+  //assert( layers_ == 8 );
+
 
   const int octaves2 = layers_;
+  //BriskLayerOne caonima(image);
+  pyramid_[0].FuckReset(image);
 
-  pyramid_[0] = BriskLayerOne(image);
-  pyramid_[1] = BriskLayerOne(pyramid_[0], BriskLayerOne::CommonParams::TWOTHIRDSAMPLE);
+  /*cout << pyramid_[0].img_.step << " " << pyramid_[0].img_.cols << " " << pyramid_[0].img_.rows << endl;
+    bool temp = (pyramid_[0].img_.data == image.data);
+    cout << temp << endl;
+  poutp( pyramid_[0].img_, "constructPyramid-2" );*/
+  //BriskLayerOne caonima1(pyramid_[0], BriskLayerOne::CommonParams::TWOTHIRDSAMPLE);
+  pyramid_[1].FuckReset(pyramid_[0], BriskLayerOne::CommonParams::TWOTHIRDSAMPLE);
+
+  //poutp( pyramid_[1].img_, "constructPyramid-1" );
 
   for (int i = 2; i < octaves2; i += 2)
   {
-    pyramid_[i] = BriskLayerOne(BriskLayerOne(pyramid_[i - 2], BriskLayerOne::CommonParams::HALFSAMPLE));
-    pyramid_[i+1] = BriskLayerOne(BriskLayerOne(pyramid_[i - 1], BriskLayerOne::CommonParams::HALFSAMPLE));
+	//BriskLayerOne caonima1(pyramid_[i - 2], BriskLayerOne::CommonParams::HALFSAMPLE);
+	//BriskLayerOne caonima2(pyramid_[i - 1], BriskLayerOne::CommonParams::HALFSAMPLE);
+    pyramid_[i].FuckReset(pyramid_[i - 2], BriskLayerOne::CommonParams::HALFSAMPLE);
+    pyramid_[i+1].FuckReset(pyramid_[i - 1], BriskLayerOne::CommonParams::HALFSAMPLE);;
   }
+  //poutp( pyramid_[2].img_, "constructPyramid" );
 }
 
 
@@ -811,6 +925,7 @@ BriskScaleSpace::getKeypoints(const int threshold_, float2* keypoints, float* kp
     //newArray( kpsLoc[i], maxPointNow, false   );
     // call OAST16_9 without nms
     BriskLayerOne& l = pyramid_[i];
+    //poutp( l.img_, "getKeypoints" );
     kpsCount[i] = l.getAgastPoints(safeThreshold_, kpsLoc[i],scoreTemp); //todo: 并行化
     maxLayersPoints = kpsCount[i] > maxLayersPoints? kpsCount[i]: maxLayersPoints;
   }
@@ -2290,6 +2405,7 @@ __host__ BRISK_Impl::~BRISK_Impl()
 {
 	if( ptrcount == 0 )
 	{
+		cout << "got me ~BRISK_Impl" << endl;
 		CUDA_CHECK_RETURN(cudaFree(patternPoints_));
 		CUDA_CHECK_RETURN(cudaFree(shortPairs_));
 		CUDA_CHECK_RETURN(cudaFree(longPairs_));
@@ -2756,8 +2872,8 @@ BRISK_Impl::computeDescriptorsAndOrOrientation(PtrStepSzb _image, float2* keypoi
 
   // clean-up
   //delete[] _values;
-
-  return ksize-temp;
+  return ksize; //debug
+  //return ksize-temp;
 }
 
 
@@ -2949,12 +3065,12 @@ BRISK_Impl::generateKernel(const float* radiusList,
   newArray(longPairs_, points_ * (points_ - 1) / 2, 1 );
   newArray( scaleList_, scales_, 1 );
   newArray( sizeList_, scales_, 1 );
-  newArray( patternPoints_, 1, 1 );
+  newArray( patternPoints_, points_ * scales_ * n_rot_, 1 );
   newArray( scaleList_, scales_, 1 );
   newArray( sizeList_, scales_, 1 );
 
   cout << "before copy,size: " << sizeof(BriskPatternPoint)*points_ * scales_ * n_rot_ << endl;
- // CUDA_CHECK_RETURN(cudaMemcpy(patternPoints_,patternPoints_i,sizeof(BriskPatternPoint),cudaMemcpyHostToDevice));
+  CUDA_CHECK_RETURN(cudaMemcpy(patternPoints_,patternPoints_i,sizeof(BriskPatternPoint)*points_ * scales_ * n_rot_,cudaMemcpyHostToDevice));
   CUDA_CHECK_RETURN(cudaMemcpy(scaleList_,scaleList_i,sizeof(float)*scales_,cudaMemcpyHostToDevice));
   CUDA_CHECK_RETURN(cudaMemcpy(sizeList_,sizeList_i,sizeof(unsigned int)*scales_,cudaMemcpyHostToDevice));
   CUDA_CHECK_RETURN(cudaMemcpy(shortPairs_,shortPairs_i,sizeof(BriskShortPair)*points_ * (points_ - 1) / 2,cudaMemcpyHostToDevice));

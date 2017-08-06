@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include "assert.h"
 #include <cuda.h>
+#include <string>
 
 #include <numeric>
 

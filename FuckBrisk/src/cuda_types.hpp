@@ -85,13 +85,7 @@ template<typename T> __host__  bool cleanArray( T * ptr, int size )
 	return true;
 }
 
-template<typename T> void pout( T* ptr, bool endline = true  )
-{
-	T temp;
-	cudaMemcpy(&temp, ptr, sizeof(T), cudaMemcpyDeviceToHost);
-	std::cout << "====GPU====(" << temp << ")";
-	std::cout << std::endl;
-}
+
 
 template <typename T> struct DevPtr
 {
@@ -135,6 +129,8 @@ public:
 	__CV_CUDA_HOST_DEVICE__       T& operator ()(int y, int x)       { return ptr(y)[x]; }
 	__CV_CUDA_HOST_DEVICE__ const T& operator ()(int y, int x) const { return ptr(y)[x]; }
 	__CV_CUDA_HOST_DEVICE__       T* at(int y, int x)     { return (      T*)( DevPtr<T>::data + y * step + x); }
+	__CV_CUDA_HOST_DEVICE__ const T* at(int y, int x)const{ return (const T*)( DevPtr<T>::data + y * step + x); }
+	//__CV_CUDA_HOST_DEVICE__       T* at(int y, int x)const{ return (const T*)( DevPtr<T>::data + y * step + x); }
 };
 
 template <typename T> struct PtrStepSz : public PtrStep<T>
@@ -175,5 +171,54 @@ typedef PtrStepSz<int> PtrStepSzi;
 typedef PtrStep<unsigned char> PtrStepb;
 typedef PtrStep<float> PtrStepf;
 typedef PtrStep<int> PtrStepi;
+
+
+
+template<typename T> void pout( const T* ptr, std::string info,bool endline = true  )
+{
+	T temp;
+	memset(&temp,0,sizeof(T));
+	CUDA_CHECK_RETURN(cudaMemcpy(&temp, ptr, sizeof(T), cudaMemcpyDeviceToHost));
+	std::cout << "===="<< info <<"====(" << temp << ")";
+	std::cout << std::endl;
+}
+
+template<typename T> void poutp(const PtrStepSz<T>& m, std::string info )
+{
+	std::cout << info << std::endl;
+	for( int i = 0; i < m.rows; i++  )
+	{
+		for(int j = 0; j < m.cols; j ++)
+		{
+			std::cout <<"( " << i << " , " << j <<  " )";
+			pout(m.at(i,j),info);
+		}
+	}
+	std::cout << "******************finish*******************" << std::endl;
+}
+
+template<typename T> void pouta( T* m, int size,std::string info )
+{
+	std::cout << info << std::endl;
+	for( int i = 0; i < size; i++  )
+	{
+		pout( &m[i], info );
+	}
+	std::cout << "******************finish*******************" << std::endl;
+}
+
+/*void poutfloat2( float2* m, int size,std::string info )
+{
+	float2 temp;
+	memset(&temp,0,sizeof(float2));
+	std::cout << info << std::endl;
+	for( int i = 0; i < size; i++  )
+	{
+		CUDA_CHECK_RETURN(cudaMemcpy(&temp, &m[i], sizeof(float2), cudaMemcpyDeviceToHost));
+		std::cout << "===="<< info <<"====(" << temp.x << "," << temp.y << ")";
+		std::cout << std::endl;
+	}
+	std::cout << "******************finish*******************" << std::endl;
+}*/
 
 #endif /* CUDA_TYPES_HPP_ */
