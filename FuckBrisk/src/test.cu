@@ -53,6 +53,11 @@ void copyToKeyPoint(vector<cv::KeyPoint>& keypoints1, int size,
 
 int main() {
 	cv::Mat testImg = cv::imread("data/test1.jpg");
+
+	cv::Mat testResize;
+	testResize.create(testImg.rows / 2, testImg.cols / 2, CV_8U);
+	cv::resize(testImg,testResize,testResize.size(),0,0,cv::INTER_AREA);
+
 	cv::Mat testImgGray;
 	cv::cvtColor(testImg, testImgGray, CV_BGR2GRAY);
 	if (!testImg.data) {
@@ -94,7 +99,10 @@ int main() {
 	int size = a.detectAndCompute(imageIn, a.keypointsG, a.kpSizeG, a.kpScoreG,
 			false);
 	//int size = a.detectAndCompute(imageIn, _keypoints.ptr<float2>(cv::cuda::FastFeatureDetector::LOCATION_ROW), a.kpSizeG, _keypoints.ptr<float>(cv::cuda::FastFeatureDetector::RESPONSE_ROW), false);
+	//float2 kptemp;
+    //CUDA_CHECK_RETURN(cudaMemcpy(&kptemp, &(a.keypointsG[0]), sizeof(float2), cudaMemcpyDeviceToHost));
 
+	cout << size << endl;
 	poutfloat2(a.keypointsG, size, "keypointsG");
 	pouta(a.kpSizeG, size, "kpSizeG");
 	pouta(a.kpScoreG, size, "kpScoreG");
@@ -114,7 +122,8 @@ int main() {
 
 	cout << "end!!" << endl;
 
-	cout << size << endl;
+
+	cout << "des size: " << a.strings_ << endl;
 	return 0;
 }
 

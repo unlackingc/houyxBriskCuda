@@ -18,15 +18,20 @@ class BriskLayerOne
 public:
   int ptrcount;
 
+  //debug
+  int rank;
+
   ~BriskLayerOne()
   {
-	  cout << "almost got me ~BriskLayerOne" << endl;
+	  cout << "almost got me ~BriskLayerOne: " << ptrcount << endl;
 	  if( ptrcount == 0 )
 	  {
-		  cout << "got me ~BriskLayerOne" << endl;
-		  CUDA_CHECK_RETURN(cudaFree(locTemp));//todo: 小心隐形调用引起不必要的释放
-		  CUDA_CHECK_RETURN(cudaFree(img_.data));
-		  CUDA_CHECK_RETURN(cudaFree(scores_.data));
+		  //debug
+		  cout << "got me ~BriskLayerOne : " << locTemp  << " " << (void*)img_.data << " " << (void*)scores_.data << endl;
+
+		  CUDA_CHECK_RETURN(cudaFree(this->scores_.data));
+		  CUDA_CHECK_RETURN(cudaFree(this->img_.data));
+		  CUDA_CHECK_RETURN(cudaFree(this->locTemp));
 	  }
   }
 
@@ -112,7 +117,7 @@ public:
 
   void FuckReset(const BriskLayerOne& layer, int mode);
 
-  BriskLayerOne():agast(640),ptrcount(10)
+  BriskLayerOne():agast(640),ptrcount(0)
   {}//todo: check no bug
 
 };
@@ -146,7 +151,7 @@ public:
 
 		for(int i = 0; i< 8; i++  )
 		{
-			pyramid_[0].ptrcount ++;
+			pyramid_[i].ptrcount ++;
 		}
 	}
   // construct the image pyramids
@@ -338,6 +343,7 @@ const float BriskScaleSpace::basicSize_ = 12.0f;
 // construct a layer
 void BriskLayerOne::FuckReset(const PtrStepSzb& img_in, float scale_in, float offset_in)
 {
+  ptrcount = 0;
   agast = Agast(img_.step);
   img_ = img_in;
 
@@ -351,7 +357,10 @@ void BriskLayerOne::FuckReset(const PtrStepSzb& img_in, float scale_in, float of
   offset_ = offset_in;
 
 
-  newArray( locTemp, maxPointNow, true );
+  newArray( locTemp, maxPointNow, false );
+  //debug
+  cout << "in FuckReset: " << locTemp << endl;
+  cout << "got me ========BriskLayerOne : " << locTemp  << " " << (void*)img_.data << " " << (void*)scores_.data << endl;
   // create an agast detector
   //agast = Agast(img_.step);
   /*  makeAgastOffsets(pixel_5_8_, (int)img_.step, AgastFeatureDetector::AGAST_5_8);
@@ -407,6 +416,10 @@ void BriskLayerOne::FuckReset(const BriskLayerOne& layer, int mode)
   //PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
   scores_ = PtrStepSzi(1,true, img_.rows, img_.cols, scoreData, img_.cols);
   newArray( locTemp, maxPointNow, false );
+  //debug
+  cout << "in FuckReset: " << locTemp << endl;
+  cout << "got me =============BriskLayerOne : " << locTemp  << " " << (void*)img_.data << " " << (void*)scores_.data << endl;
+
   agast = Agast( img_.step );
   //agast = Agast(img_.step);
 }
@@ -516,6 +529,7 @@ BriskLayerOne::getAgastPoints(int threshold, short2* keypoints, float* scores)
   //int detectMe1( PtrStepSzb image, short2* keyPoints, PtrStepSzi scores, short2* loc, float* response, int threshold=10, int maxPoints=5000, bool ifNoMaxSup = true);
 
   return detectMe1( img_, locTemp, scores_, keypoints, scores, threshold );
+
   //return num;
   // also write scores
   //const size_t num = keypoints.size();
@@ -942,8 +956,19 @@ BriskScaleSpace::getKeypoints(const int threshold_, float2* keypoints, float* kp
 
   CUDA_CHECK_RETURN(cudaMemsetAsync(counter_ptr, 0, sizeof(unsigned int)));
 
+  //debug
+  for( int i =0;i < layers_; i++  )
+  {
+	  cout << "before kernel1: " <<  pyramid_[i].locTemp << endl;
+  }
+
     refineKernel1<<<kpsCount[0]/(32*4)+1,32*4,0>>>(  *this,  keypoints,  kpSize,  kpScore, threshold_, 0 );
 
+    //debug
+    for( int i =0;i < layers_; i++  )
+    {
+  	  cout << "after kernel1: " <<  pyramid_[i].locTemp << endl;
+    }
 
   CUDA_CHECK_RETURN(cudaGetLastError());//todo: cudaSafeCall
 
@@ -988,13 +1013,28 @@ BriskScaleSpace::getKeypoints(const int threshold_, float2* keypoints, float* kp
 
     CUDA_CHECK_RETURN(cudaMemsetAsync(counter_ptr, 0, sizeof(unsigned int)));
 
+   // cout << "" << maxLayersPoints << endl;
+
     dim3 grid;
     grid.x = layers_;
-    grid.y = maxLayersPoints/32;//todo optimize
+    grid.y = (maxLayersPoints<32?32:maxLayersPoints)/32;//todo optimize
     //maxLayersPoints
+
+
+    //debug
+    for( int i =0;i < layers_; i++  )
+    {
+  	  cout << "before kernel2: " <<  pyramid_[i].locTemp << endl;
+    }
 
     refineKernel2<<<grid,32,0>>>(  *this,  keypoints,  kpSize,  kpScore, threshold_ );
 
+
+    //debug
+    for( int i =0;i < layers_; i++  )
+    {
+  	  cout << "after kernel2: " <<  pyramid_[i].locTemp << endl;
+    }
 
   CUDA_CHECK_RETURN(cudaGetLastError());//todo: cudaSafeCall
 
@@ -2394,7 +2434,12 @@ BRISK_Impl::computeKeypointsNoOrientation(PtrStepSzb _image, float2* keypoints, 
   BriskScaleSpace briskScaleSpace(octaves); // todo: insure octaves == 8
 
   briskScaleSpace.constructPyramid(_image);
-  return briskScaleSpace.getKeypoints(threshold, keypoints,kpSize,kpScore);
+
+
+
+  int a = briskScaleSpace.getKeypoints(threshold, keypoints,kpSize,kpScore);
+
+
 
   // remove invalid points
   //KeyPointsFilter::runByPixelsMask(keypoints, mask);
@@ -2679,8 +2724,7 @@ __global__ void generateDesKernel( BRISK_Impl briskImpl, const int ksize,  float
 
 	  // the feature orientation
 	  const unsigned char* ptr = briskImpl.descriptorsG.data;
-	  for (size_t k = 0; k < ksize; k++)
-	  {
+
 		float2& kp = keypoints[k];
 	    const int& scale = briskImpl.kscalesG[k];
 	    int* pvalues = briskImpl._valuesG;
@@ -2724,7 +2768,7 @@ __global__ void generateDesKernel( BRISK_Impl briskImpl, const int ksize,  float
 	    }
 
 	    if (!doDescriptors)
-	      continue;
+	      return;
 
 	    int theta;
 	    if (angle==-1)
@@ -2780,7 +2824,7 @@ __global__ void generateDesKernel( BRISK_Impl briskImpl, const int ksize,  float
 	    }
 
 	    ptr += briskImpl.strings_;
-	  }
+
 }
 
 //todo: imple
@@ -2833,6 +2877,12 @@ BRISK_Impl::computeDescriptorsAndOrOrientation(PtrStepSzb _image, float2* keypoi
 
   CUDA_CHECK_RETURN(cudaMemsetAsync(counter_ptr, 0, sizeof(unsigned int)));
 
+
+
+  //debug
+ // float2 kptemp;
+  //CUDA_CHECK_RETURN(cudaGetLastError() );
+  //CUDA_CHECK_RETURN(cudaMemcpy(&kptemp, &(keypointsG[0]), sizeof(float2), cudaMemcpyDeviceToHost));
  // deleteBorderkernel( BRISK_Impl briskImpl, const int ksize,  float2* keypoints, float* kpSize, float* kpScore, PtrStepSzb _image )
 
   deleteBorderkernel<<<ksize/32 + 1,32>>>(  *this, ksize, keypoints, kpSize, kpScore, _image );
@@ -2863,13 +2913,22 @@ BRISK_Impl::computeDescriptorsAndOrOrientation(PtrStepSzb _image, float2* keypoi
     descriptors.setTo(0);
   }*/
 
+  //debug
+  //float2 kptemp;
+  //CUDA_CHECK_RETURN(cudaGetLastError() );
+  //CUDA_CHECK_RETURN(cudaMemcpy(&kptemp, &(keypointsG[0]), sizeof(float2), cudaMemcpyDeviceToHost));
+
   // now do the extraction for all keypoints:
   //__global__ void generateDesKernel( BRISK_Impl briskImpl, const int ksize,  float2* keypoints, float* kpSize, float* kpScore, PtrStepSzb _image, bool doDescriptors, bool doOrientation,
 
   // temporary variables containing gray values at sample points:
-  generateDesKernel<<<ksize/32 + 1,32>>>(  *this,ksize, keypoints, kpSize, kpScore,_image,doDescriptors,  doOrientation, useProvidedKeypoints );
+  generateDesKernel<<<(ksize < 32?32:ksize)/32 + 1,32>>>(  *this,ksize, keypoints, kpSize, kpScore,_image,doDescriptors,  doOrientation, useProvidedKeypoints );
 
 
+  //debug
+  //float2 kptemp;
+  //CUDA_CHECK_RETURN(cudaGetLastError() );
+  //CUDA_CHECK_RETURN(cudaMemcpy(&kptemp, &(keypoints[0]), sizeof(float2), cudaMemcpyDeviceToHost));
   // clean-up
   //delete[] _values;
   return ksize; //debug
@@ -2888,8 +2947,14 @@ BRISK_Impl::detectAndCompute( PtrStepSzb _image, float2* keypoints, float* kpSiz
   bool doDescriptors = true;
 
 
+  //debug
+  //float2 kptemp;
+  //CUDA_CHECK_RETURN(cudaMemcpy(&kptemp, &(keypointsG[0]), sizeof(float2), cudaMemcpyDeviceToHost));
+
   return computeDescriptorsAndOrOrientation(_image, keypoints,  kpSize,  kpScore,  doDescriptors, doOrientation,
                                        useProvidedKeypoints);
+
+
 }
 
 /***
