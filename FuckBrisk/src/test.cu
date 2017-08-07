@@ -76,43 +76,46 @@ void copyDescritporDebug( PtrStepSzb desGpu, cv::Mat& descriptor, int size, int 
 
 
 int main() {
-	cv::Mat testImg = cv::imread("data/test2.jpg");
-	cv::Mat testImg11 = cv::imread("data/test1.jpg");
 
-	cv::Mat testResize;
-	testResize.create(testImg.rows / 2, testImg.cols / 2, CV_8U);
-	cv::resize(testImg,testResize,testResize.size(),0,0,cv::INTER_AREA);
-
-	cv::Mat testRotate;
-	cv::transpose(testImg,testRotate);
-
-	cv::Mat testImgGray;
-	cv::cvtColor(testImg, testImgGray, CV_BGR2GRAY);
-
-	cv::Mat testImgGray1;
-	cv::cvtColor(testImg11, testImgGray1, CV_BGR2GRAY);
+	//读取图片
+	cv::Mat testImg = cv::imread("data/test1.jpg");
 	if (!testImg.data) {
 		cout << "load data failed" << endl;
 	}
-	//cv::imshow("test", testImgGray);
-	//cv::waitKey();
 
+/*	cv::Mat testImg11 = cv::imread("data/test1.jpg");
+	cv::Mat testResize;
+	testResize.create(testImg.rows / 2, testImg.cols / 2, CV_8U);
+	cv::resize(testImg,testResize,testResize.size(),0,0,cv::INTER_AREA);*/
+
+
+
+	//得到旋转图片
+	cv::Mat testRotate;
+	cv::transpose(testImg,testRotate);
+
+
+
+	//得到灰度图
+	cv::Mat testImgGray;
+	cv::cvtColor(testImg, testImgGray, CV_BGR2GRAY);
+	cv::Mat testImgGray1;
+	cv::cvtColor(testRotate, testImgGray1, CV_BGR2GRAY);
+
+
+
+	//将图片上传到GPU
+	cv::cuda::GpuMat dstImage;
 	cv::cuda::GpuMat dstImage1;
-	cv::cuda::GpuMat dstImage2;
-	//ensureSizeIsEnough(cuda::FastFeatureDetector::ROWS_COUNT, 5000, CV_32FC1, _keypoints);
-	//ensureSizeIsEnough(dstSize.height, dstSize.width, CV_8UC1, dstImage1);
 	unsigned char * dstImagedata,*dstImagedata1;
-
 	cudaMalloc(&dstImagedata, testImgGray.rows * testImgGray.cols);
 	cudaMalloc(&dstImagedata1, testImgGray1.rows * testImgGray1.cols);
-
 	for (int i = 0; i < testImgGray.rows; i++) {
 		cudaMemcpy(dstImagedata + i * testImgGray.cols,
 				testImgGray.data + i * testImgGray.step,
 				sizeof(unsigned char) * testImgGray.cols,
 				cudaMemcpyHostToDevice);
 	}
-
 	for (int i = 0; i < testImgGray1.rows; i++) {
 		cudaMemcpy(dstImagedata1 + i * testImgGray1.cols,
 				testImgGray1.data + i * testImgGray1.step,
@@ -120,67 +123,67 @@ int main() {
 				cudaMemcpyHostToDevice);
 	}
 
-	dstImage1.data = dstImagedata;
-	dstImage1.cols = testImgGray.cols;
-	dstImage1.step = testImgGray.cols;
-	dstImage1.rows = testImgGray.rows;
+	dstImage.data = dstImagedata;
+	dstImage.cols = testImgGray.cols;
+	dstImage.step = testImgGray.cols;
+	dstImage.rows = testImgGray.rows;
 
-	dstImage2.data = dstImagedata1;
-	dstImage2.cols = testImgGray1.cols;
-	dstImage2.step = testImgGray1.cols;
-	dstImage2.rows = testImgGray1.rows;
+	dstImage1.data = dstImagedata1;
+	dstImage1.cols = testImgGray1.cols;
+	dstImage1.step = testImgGray1.cols;
+	dstImage1.rows = testImgGray1.rows;
 
+	PtrStepSzb imageIn(dstImage.rows, dstImage.cols, dstImage.data,
+			dstImage.step);
+	PtrStepSzb imageIn1(dstImage1.rows, dstImage1.cols, dstImage1.data,
+			dstImage1.step);
+
+
+	//把GPU的图片读出来显示，确保无误
 	cv::Mat retestCpu(testImgGray.rows, testImgGray.cols, CV_8UC1);
-	dstImage1.download(retestCpu);
-
+	dstImage.download(retestCpu);
 	cv::Mat retestCpu1(testImgGray1.rows, testImgGray1.cols, CV_8UC1);
-	dstImage2.download(retestCpu1);
-
+	dstImage1.download(retestCpu1);
 	cv::imshow("retestCpu", retestCpu);
 	cv::imshow("retestCpu1", retestCpu1);
 	cv::waitKey();
-//(int rows_, int cols_, T* data_, size_t step_)
-	PtrStepSzb imageIn(dstImage1.rows, dstImage1.cols, dstImage1.data,
-			dstImage1.step);
-
-	PtrStepSzb imageIn1(dstImage2.rows, dstImage2.cols, dstImage2.data,
-			dstImage2.step);
-
-
 	cout << "load image done!!" << endl;
 
-	BRISK_Impl a(dstImage1.rows, dstImage1.cols);
-	int2 size = a.detectAndCompute(imageIn, a.keypointsG, a.kpSizeG, a.kpScoreG,
+
+
+	//brisk计算特征点
+	BRISK_Impl a(true,dstImage.rows, dstImage.cols);
+	int2 size = a.detectAndCompute(imageIn, a.keypointsG, a.kpSizeG, a.kpScoreG,a.descriptorsG,
 			false);
 
-	BRISK_Impl a1(dstImage2.rows, dstImage2.cols);
-	int2 size1 = a1.detectAndCompute(imageIn1, a1.keypointsG, a1.kpSizeG, a1.kpScoreG,
+	BRISK_Impl a1(true,dstImage1.rows, dstImage1.cols);
+	int2 size1 = a1.detectAndCompute(imageIn1, a1.keypointsG, a1.kpSizeG, a1.kpScoreG,a1.descriptorsG,
 				false);
+	cout << "原始图特征点数： 去边角前--" << size.x << " 去掉边角后--" << size.y << endl;
+	cout << "旋转图特征点数： 去边角前--" << size1.x << " 去掉边角后--" << size1.y << endl;
 
 
 
-
-	cout << size.x << " " << size.y << endl;
-	cout << size1.x << " " << size1.y << endl;
-	//poutfloat2(a.keypointsG, size.x, "keypointsG");
-	//pouta(a.kpSizeG, size.x, "kpSizeG");
-	//pouta(a.kpScoreG, size.x, "kpScoreG");
-
-	//display
+	//把GPU上的特征点copy灰opencv的结构
 	vector<cv::KeyPoint> keypoints;
 	copyToKeyPoint(keypoints, size.x, a.keypointsG, a.kpSizeG, a.kpScoreG);
-
 	vector<cv::KeyPoint> keypoints1;
 	copyToKeyPoint(keypoints1, size1.x, a1.keypointsG, a1.kpSizeG, a1.kpScoreG);
+	cv::Mat descriptors;
+	copyDescritpor( a.descriptorsG, descriptors, size.y, a.strings_ );
+	cv::Mat descriptors1;
+	copyDescritpor( a1.descriptorsG, descriptors1, size1.y, a1.strings_ );
 
+
+
+
+
+	//画图显示
 	cv::Mat result1;
 	int drawmode = cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS;
-	//fastDetector_->convert(fastKpRange, KpRange);
 	cv::drawKeypoints(testImgGray, keypoints, result1, cv::Scalar::all(-1),
 			drawmode);
-
 	cv::Mat result2;
-	//fastDetector_->convert(fastKpRange, KpRange);
 	cv::drawKeypoints(testImgGray1, keypoints1, result2, cv::Scalar::all(-1),
 			drawmode);
 
@@ -193,56 +196,33 @@ int main() {
 
 
 
-	//match
-	cv::Mat descriptors;
-	copyDescritpor( a.descriptorsG, descriptors, size.y, a.strings_ );
-
-	cv::Mat descriptors1;
-	copyDescritpor( a1.descriptorsG, descriptors1, size1.y, a1.strings_ );
-
-/*	for( int i = 0; i < size.y; i++ )
-	{
-		cout << "descriptor " << i << " :\t";
-		for( int j = 0; j < a.strings_; j++ )
-		{
-			cout  << (int)(descriptors.at<unsigned char>(i,j))<<" ";
-		}
-		cout << endl;
-	}*/
-
+	//match并画图显示
     cv::BFMatcher matcher(cv::NORM_HAMMING);
     vector<cv::DMatch> matches;
     matcher.match(descriptors, descriptors1, matches);
-
-
+    //在keypoint中删除标记为边角的点--(x,y) = (-1,-1) 注：这些点其实在descriptors中不存在
     int tempcount = 0;
     for( int i = 0; i < size.y; i ++ )
     {
     	if( keypoints[i].pt.x == -1 || keypoints[i].pt.y == -1 )
     	{
     		keypoints.erase(keypoints.begin() + i);
-
     		//cout << "in delete keypoints: " << i << " " << ++ tempcount << " points deleted" << endl;
-
     		if(tempcount > size.y)
     		{
     			exit(1);
     		}
-
     	    i --;
     	}
     }
 
     tempcount = 0;
-
     for( int i = 0; i < size1.y; i ++ )
     {
     	if( keypoints1[i].pt.x == -1 || keypoints1[i].pt.y == -1 )
     	{
     		keypoints1.erase(keypoints1.begin() + i);
-
     		//cout << "in delete keypoints1: " << i << " " << ++ tempcount << " points deleted" << endl;
-
     		if(tempcount > size1.y)
     		{
     			exit(1);
@@ -250,16 +230,11 @@ int main() {
     		i --;
     	}
     }
-
-    cout << keypoints.size() << " " << keypoints1.size() << endl;
-
     cv::Mat img_match;
     cv::drawMatches(testImgGray, keypoints, testImgGray1, keypoints1, matches, img_match);
     cout<<"number of matched points: "<<matches.size()<<endl;
     cv::imshow("matches",img_match);
     cv::waitKey(0);
-
-
 
 
 	cout << "end!!" << endl;

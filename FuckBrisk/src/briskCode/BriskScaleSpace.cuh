@@ -221,10 +221,11 @@ class BRISK_Impl {
 public:
 	int ptrcount;
 	int isFirstTime;
+	bool useSelfArray;
 
 	BriskScaleSpace briskScaleSpace;
 
-	explicit BRISK_Impl(int rows, int cols, int thresh = 30, int octaves = 3,
+	explicit BRISK_Impl(bool useSelfArray, int rows, int cols, int thresh = 30, int octaves = 3,
 			float patternScale = 1.0f);
 
 	__host__ ~BRISK_Impl();
@@ -247,12 +248,12 @@ public:
 			const int ListSize, float dMax, float dMin);
 
 	int2 detectAndCompute(PtrStepSzb _image, float2* keypoints, float* kpSize,
-			float* kpScore, bool useProvidedKeypoints);
+			float* kpScore,PtrStepSzb descriptors, bool useProvidedKeypoints);
 
 	int computeKeypointsNoOrientation(PtrStepSzb& _image, float2* keypoints,
 			float* kpSize, float* kpScore);
 	int2 computeDescriptorsAndOrOrientation(PtrStepSzb _image,
-			float2* keypoints, float* kpSize, float* kpScore,
+			float2* keypoints, float* kpSize, float* kpScore, PtrStepSzb descriptors,
 			bool doDescriptors, bool doOrientation, bool useProvidedKeypoints);
 
 	// Feature parameters
@@ -304,9 +305,6 @@ public:
 	float* kpScoreG;
 	PtrStepSzi _integralG;
 	PtrStepSzb descriptorsG;
-
-	int* temptestInner;
-
 };
 
 const float BRISK_Impl::basicSize_ = 12.0f;
@@ -1990,8 +1988,16 @@ __host__ BRISK_Impl::~BRISK_Impl() {
 		CUDA_CHECK_RETURN(cudaFree(longPairs_));
 		CUDA_CHECK_RETURN(cudaFree(scaleList_));
 		CUDA_CHECK_RETURN(cudaFree(sizeList_));
-		CUDA_CHECK_RETURN(cudaFree(descriptorsG.data));
 		CUDA_CHECK_RETURN(cudaFree(_integralG.data));
+
+		if( useSelfArray )
+		{
+			CUDA_CHECK_RETURN(cudaFree(descriptorsG.data));
+			CUDA_CHECK_RETURN(cudaFree(kpSizeG));
+			CUDA_CHECK_RETURN(cudaFree(kscalesG));
+			CUDA_CHECK_RETURN(cudaFree(keypointsG));
+			CUDA_CHECK_RETURN(cudaFree(kpScoreG));
+		}
 	}
 }
 
@@ -2182,7 +2188,7 @@ __device__ inline int smoothedIntensity(BRISK_Impl& briskImpl,
 }
 
 __global__ void generateDesKernel(BRISK_Impl briskImpl, const int ksize,
-		float2* keypoints, float* kpSize, float* kpScore, PtrStepSzb _image,
+		float2* keypoints, float* kpSize, float* kpScore, PtrStepSzb _image, PtrStepSzb descriptors,
 		bool doDescriptors, bool doOrientation, bool useProvidedKeypoints) {
 
 	const int k = threadIdx.x + blockIdx.x * blockDim.x;
@@ -2219,7 +2225,7 @@ __global__ void generateDesKernel(BRISK_Impl briskImpl, const int ksize,
 		return;
 	} else {
 		ind = atomicInc(&g_counter1, (unsigned int) (-1));
-		ptr = briskImpl.descriptorsG.data + (ind) * briskImpl.strings_;
+		ptr = descriptors.data + (ind) * briskImpl.strings_;
 	}
 
 	int t1;
@@ -2345,7 +2351,7 @@ void integral(PtrStepSzb _image, PtrStepSzi ret) {
  * @param useProvidedKeypoints
  */
 int2 BRISK_Impl::computeDescriptorsAndOrOrientation(PtrStepSzb _image,
-		float2* keypoints, float* kpSize, float* kpScore, bool doDescriptors,
+		float2* keypoints, float* kpSize, float* kpScore, PtrStepSzb descriptors, bool doDescriptors,
 		bool doOrientation, bool useProvidedKeypoints) {
 
 	int keyPointsCount = 0;
@@ -2366,7 +2372,7 @@ int2 BRISK_Impl::computeDescriptorsAndOrOrientation(PtrStepSzb _image,
 	CUDA_CHECK_RETURN(cudaMemsetAsync(counter_ptr, 0, sizeof(unsigned int)));
 
 	generateDesKernel<<<(ksize < 32 ? 32 : ksize) / 32 + 1, 32>>>(*this, ksize,
-			keypoints, kpSize, kpScore, _image, doDescriptors, doOrientation,
+			keypoints, kpSize, kpScore, _image, descriptors, doDescriptors, doOrientation,
 			useProvidedKeypoints);
 
 	CUDA_CHECK_RETURN(cudaGetLastError());
@@ -2381,13 +2387,13 @@ int2 BRISK_Impl::computeDescriptorsAndOrOrientation(PtrStepSzb _image,
 }
 
 int2 BRISK_Impl::detectAndCompute(PtrStepSzb _image, float2* keypoints,
-		float* kpSize, float* kpScore, bool useProvidedKeypoints) {
+		float* kpSize, float* kpScore, PtrStepSzb descriptors, bool useProvidedKeypoints) {
 	bool doOrientation = true;
 
 	bool doDescriptors = true;
 
 	return computeDescriptorsAndOrOrientation(_image, keypoints, kpSize,
-			kpScore, doDescriptors, doOrientation, useProvidedKeypoints);
+			kpScore, descriptors, doDescriptors, doOrientation, useProvidedKeypoints);
 
 }
 
@@ -2558,8 +2564,8 @@ void BRISK_Impl::generateKernel(const float* radiusList, const int* numberList,
 	free(patternPoints_i);
 }
 
-BRISK_Impl::BRISK_Impl(int rows, int cols, int thresh, int octaves_in,
-		float patternScale) :
+BRISK_Impl::BRISK_Impl(bool useSelfArray_, int rows, int cols, int thresh, int octaves_in,
+		float patternScale) : useSelfArray(useSelfArray_),
 		ptrcount(0), briskScaleSpace(octaves_in), isFirstTime(true) {
 
 	threshold = thresh;
