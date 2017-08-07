@@ -1,34 +1,58 @@
 # 工程文件夹说明
 **本项目包含了若干工程，包括不同的测试工程**
-- cudaTest：没有卵用
-- FastTest： 对==cv::cuda::FastFeatureDetector==的测试
-- FastCuda：  对==cv::cuda::FastFeatureDetector==的提取
 - FuckBrisk： 对opencv3.2中brisk.cpp的移植
+- 其他：没有用
 
-# FastCuda
-Api
+# API及其注意事项
+## briskCode/BaseIncludes.cuh
+**这是核心文件**
+主要调用方式：
 
 ``` cpp
-#include "FastCuda.h"
+	BRISK_Impl a(true,dstImage.rows, dstImage.cols);
+	int2 size = a.detectAndCompute(imageIn, a.keypointsG, a.kpSizeG, a.kpScoreG,a.descriptorsG,
+			false);
 
-int detectMe(int rows, int cols, int step, unsigned char* image, short2* keyPoints, int* scores, short2* loc, float* response,int threshold=10, int maxPoints=5000, bool ifNoMaxSup = true);
+	BRISK_Impl a1(true,dstImage1.rows, dstImage1.cols);
+	int2 size1 = a1.detectAndCompute(imageIn1, a1.keypointsG, a1.kpSizeG, a1.kpScoreG,a1.descriptorsG,
+				false);
+```
 
-rows: 行数
-cols: 列数
-step: 参见opencvGpuMat定义，如果数组连续，step=cols
-image: 4深度灰度图像数组
-keyPoints: 不做noMaxsup时的KeyPoint坐标  size = maxPoints
-scores: 不做noMaxsup时的KeyPoint Score,存放在对应的（i,j）上。 size = image.rows*image.cols
-loc: 做noMaxsup时的KeyPoint坐标。  size = maxPoints
-response： 做noMaxsup时的KeyPoint Score，index和loc相同， size = maxPoints
-以上数组都需要事先开辟好
+其中BRISK_Impl的构造方法是
+
+``` cpp
+BRISK_Impl(bool useSelfArray, int rows, int cols, int thresh = 30, int octaves = 3, float patternScale = 1.0f);
+//useSelfArray 参考注意事项1
 ```
 
 
-# 使用IDE
-1. 我使用的是英伟达自带的Nsight eclipse edition
-2. 理论上直接在debug或release文件夹下make也是可以编译的
 
+其中imageIn的构造方法是
+
+``` cpp
+PtrStepSzb imageIn(int rows,int cols, ( void* ) dataPointer, int step);
+// rows:				图像行数=图像高度
+// cols:				图像列数=图像宽度
+// dataPointer:		图像数组指针
+// step:				图像对齐度，如果数组连续，即为cols（推荐连续）
+```
+
+
+## 注意事项
+1. BRISK_Impl构造的第一个bool值表示是否让BRISK_Impl帮你生成你所需的返回结果数组，如a1.keypointsG等。
+	- 若为true，BRISK_Impl析构时**不会释放这些指针**
+	- 若为false, BRISK_Impl析构时会**释放这些指针**，所以你使用时**要注意**
+2. detectAndCompute的返回值是一个int2
+	- int2.x 表示**没有去掉size超过边界的特征点**的总特征点数，这些点为了速度原因，在==a1.keypointsG, a1.kpSizeG, a1.kpScoreG==中都**没有删除**，只是标记其坐标为(-1,-1)
+	- int2.y 表示**已经去掉size超过边界的特征点**的总特征点数，==descriptorsG==中不包含那些(-1,-1)的点。
+
+# test.cu
+详细的测试样例
+
+
+# 使用IDE
+1. IDE: Nsight eclipse edition
+2. 库： Npp, opencv
 
 
 
