@@ -255,7 +255,7 @@ __inline__ int calcKeypoints_gpu(PtrStepSzb img, PtrStepSzb mask, short2* kpLoc,
     grid.y = divUp(img.rows - 6, block.y);
 
 
-    CUDA_CHECK_RETURN(cudaMemset(counter_ptr, 0, sizeof(unsigned int)));
+    CUDA_CHECK_RETURN(cudaMemsetAsync(counter_ptr, 0, sizeof(unsigned int)));
 
     if (score.data)
     {
@@ -274,7 +274,7 @@ __inline__ int calcKeypoints_gpu(PtrStepSzb img, PtrStepSzb mask, short2* kpLoc,
 
     unsigned int count = 0;
 
-    CUDA_CHECK_RETURN(cudaMemcpy(&count, counter_ptr, sizeof(unsigned int), cudaMemcpyDeviceToHost));
+    CUDA_CHECK_RETURN(cudaMemcpyAsync(&count, counter_ptr, sizeof(unsigned int), cudaMemcpyDeviceToHost));
 
     return count;
 }
@@ -326,14 +326,13 @@ __inline__ int nonmaxSuppression_gpu(const short2* kpLoc, int count, PtrStepSzi 
     dim3 grid;
     grid.x = divUp(count, block.x);
 
-    CUDA_CHECK_RETURN(cudaMemset(counter_ptr, 0, sizeof(unsigned int)));//todo: cudaSafeCall
+    CUDA_CHECK_RETURN(cudaMemsetAsync(counter_ptr, 0, sizeof(unsigned int)));//todo: cudaSafeCall
 
     nonmaxSuppression<<<grid, block, 0, stream>>>(kpLoc, count, score, loc, response);
     CUDA_CHECK_RETURN(cudaGetLastError());//todo: cudaSafeCall
 
     unsigned int new_count;
-    CUDA_CHECK_RETURN(cudaMemcpy(&new_count, counter_ptr, sizeof(unsigned int), cudaMemcpyDeviceToHost));//todo: cudaSafeCall
-
+    CUDA_CHECK_RETURN(cudaMemcpyAsync(&new_count, counter_ptr, sizeof(unsigned int), cudaMemcpyDeviceToHost));//todo: cudaSafeCall
 
     return new_count;
 }

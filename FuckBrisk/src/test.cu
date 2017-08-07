@@ -78,7 +78,7 @@ void copyDescritporDebug( PtrStepSzb desGpu, cv::Mat& descriptor, int size, int 
 int main() {
 
 	//读取图片
-	cv::Mat testImg = cv::imread("data/test1.jpg");
+	cv::Mat testImg = cv::imread("data/test2.jpg");
 	if (!testImg.data) {
 		cout << "load data failed" << endl;
 	}
@@ -100,7 +100,7 @@ int main() {
 	cv::Mat testImgGray;
 	cv::cvtColor(testImg, testImgGray, CV_BGR2GRAY);
 	cv::Mat testImgGray1;
-	cv::cvtColor(testImg11, testImgGray1, CV_BGR2GRAY);
+	cv::cvtColor(testRotate, testImgGray1, CV_BGR2GRAY);
 
 
 
@@ -155,16 +155,32 @@ int main() {
 	BRISK_Impl a(true,dstImage.rows, dstImage.cols);
 
 	int2 size;
-	for( int i = 0; i < 1; i ++ )
-	{
-		//size = a.detectAndCompute(imageIn, a.keypointsG, a.kpSizeG, a.kpScoreG,a.descriptorsG,false);
 
+	cudaEvent_t start, stop;
+	float elapsedTime = 0.0;
+
+	cudaEventCreate(&start);
+	cudaEventCreate(&stop);
+	cudaEventRecord(start, 0);
+
+	for( int i = 0; i < 10000; i ++ )
+	{
+		size = a.detectAndCompute(imageIn, a.keypointsG, a.kpSizeG, a.kpScoreG,a.descriptorsG,false);
+		if(i%50==0)
 		cout << "caled: " << i << endl;
 	}
-	size = a.detectAndCompute(imageIn, a.keypointsG, a.kpSizeG, a.kpScoreG,a.descriptorsG,
-		false);
+	size = a.detectAndCompute(imageIn, a.keypointsG, a.kpSizeG, a.kpScoreG,a.descriptorsG,false);
+	cudaEventRecord(stop, 0);
+	cudaEventSynchronize(stop);
+
+	cudaEventElapsedTime(&elapsedTime, start, stop);
+
+	cout << "time elapsed: " << elapsedTime << endl;
+
+	cudaEventDestroy(start);
+	cudaEventDestroy(stop);
+
 	cout << "a finished" << endl;
-	size = a.detectAndCompute(imageIn1, a.keypointsG, a.kpSizeG, a.kpScoreG,a.descriptorsG, false);
 
 	BRISK_Impl a1(true,dstImage1.rows, dstImage1.cols);
 	int2 size1 = a1.detectAndCompute(imageIn1, a1.keypointsG, a1.kpSizeG, a1.kpScoreG,a1.descriptorsG,
@@ -185,7 +201,15 @@ int main() {
 	copyDescritpor( a1.descriptorsG, descriptors1, size1.y, a1.strings_ );
 
 
-
+/*	for( int i = 0; i < size.y; i ++ )
+	{
+		cout << "des: " << i << "----";
+		for( int j = 0; j < a.strings_; j ++ )
+		{
+			cout << (int)(descriptors.at<uchar>(i,j))<<" ";
+		}
+		cout << endl;
+	}*/
 
 
 	//画图显示
