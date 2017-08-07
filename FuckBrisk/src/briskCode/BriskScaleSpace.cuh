@@ -10,7 +10,6 @@
 
 #include "../libsrc/AgastCuda/AgastCuda.cuh"
 #include "npp.h"
-//class BriskLayerOne;
 
 class BriskLayerOne {
 
@@ -22,12 +21,11 @@ public:
 	bool saveTheOriginImage;
 
 	~BriskLayerOne() {
-		cout << "almost got me ~BriskLayerOne: " << ptrcount << endl;
+
 		if (ptrcount == 0 && hasFuckReset) {
-			cout << "got me ~BriskLayerOne: " << endl;
+
 			CUDA_CHECK_RETURN(cudaFree(this->scores_.data));
-			if( !saveTheOriginImage )
-			{
+			if (!saveTheOriginImage) {
 				CUDA_CHECK_RETURN(cudaFree(this->img_.data));
 			}
 			CUDA_CHECK_RETURN(cudaFree(this->locTemp));
@@ -36,7 +34,6 @@ public:
 
 	BriskLayerOne(const BriskLayerOne& c) :
 			agast(c.agast) {
-		//val = c.val;
 		*this = c;
 
 		ptrcount = c.ptrcount + 1;
@@ -92,29 +89,28 @@ public:
 	__device__ inline int
 	value(const PtrStepSzi mat, float xf, float yf, float scale_in) const;
 
-	__host__ void resize2(bool isFisrtTime,const PtrStepSzb& srcimg, PtrStepSzb& dstimg);
+	__host__ void resize2(bool isFisrtTime, const PtrStepSzb& srcimg,
+			PtrStepSzb& dstimg);
 
-	__host__ void resize3_2(bool isFisrtTime,const PtrStepSzb& srcimg, PtrStepSzb& dstimg);
+	__host__ void resize3_2(bool isFisrtTime, const PtrStepSzb& srcimg,
+			PtrStepSzb& dstimg);
 
 	__host__ inline void
-	halfsample(bool isFisrtTime,const PtrStepSzb& srcimg, PtrStepSzb& dstimg);
+	halfsample(bool isFisrtTime, const PtrStepSzb& srcimg, PtrStepSzb& dstimg);
 
 	__host__ inline void
-	twothirdsample(bool isFisrtTime,const PtrStepSzb& srcimg, PtrStepSzb& dstimg);
+	twothirdsample(bool isFisrtTime, const PtrStepSzb& srcimg,
+			PtrStepSzb& dstimg);
 
-/*	BriskLayerOne(const PtrStepSzb& img_in, float scale = 1.0f, float offset =
-			0.0f);
-
-	BriskLayerOne(const BriskLayerOne& layer, int mode);*/
-
-	void FuckReset(bool isFisrtTime, const PtrStepSzb& img_in, float scale = 1.0f, float offset =
-			0.0f);
+	void FuckReset(bool isFisrtTime, const PtrStepSzb& img_in, float scale =
+			1.0f, float offset = 0.0f);
 
 	void FuckReset(bool isFisrtTime, const BriskLayerOne& layer, int mode);
 
 	BriskLayerOne() :
-			agast(640), ptrcount(0), hasFuckReset(false),saveTheOriginImage(false) {
-	} //todo: check no bug
+			agast(640), ptrcount(0), hasFuckReset(false), saveTheOriginImage(
+					false) {
+	}
 
 };
 
@@ -129,8 +125,6 @@ public:
 	BriskScaleSpace(int _octaves = 3);
 	~BriskScaleSpace() {
 		if (ptrcount == 0) {
-			cout << "got me ~BriskScaleSpace " << endl;
-			//cout << "got me ~BriskScaleSpace" << endl;
 			CUDA_CHECK_RETURN(cudaFree(scoreTemp));
 			for (int i = 0; i < layerExpected; i++) {
 
@@ -140,7 +134,6 @@ public:
 	}
 
 	BriskScaleSpace(const BriskScaleSpace& c) {
-		//val = c.val;
 		*this = c;
 		ptrcount = c.ptrcount + 1;
 
@@ -150,7 +143,7 @@ public:
 	}
 	// construct the image pyramids
 	void
-	constructPyramid( PtrStepSzb& image, bool isFisrtTime);
+	constructPyramid(PtrStepSzb& image, bool isFisrtTime);
 
 	// get Keypoints
 	int
@@ -178,7 +171,6 @@ public:
 			const int s_2_1, const int s_2_2, float& delta_x,
 			float& delta_y) const;
 
-	//todo: 决定执行的地方？ host? device?因为涉及到上下层
 	// 3D maximum refinement centered around (x_layer,y_layer)
 	__device__ inline float
 	refine3D(BriskLayerOne* layers, const int layer, const int x_layer,
@@ -234,21 +226,17 @@ public:
 
 	explicit BRISK_Impl(int rows, int cols, int thresh = 30, int octaves = 3,
 			float patternScale = 1.0f);
-	// custom setup
-	/*    explicit BRISK_Impl(const std::vector<float> &radiusList, const std::vector<int> &numberList,
-	 float dMax=5.85f, float dMin=8.2f, const std::vector<int> indexChange=std::vector<int>());*/
 
 	__host__ ~BRISK_Impl();
 
 	BRISK_Impl(const BRISK_Impl& c) {
-		//val = c.val;
 		*this = c;
 		ptrcount = c.ptrcount + 1;
 		briskScaleSpace.ptrcount = c.briskScaleSpace.ptrcount + 1;
 
-		for( int i = 0; i < layerExpected; i++ )
-		{
-			briskScaleSpace.pyramid_[i].ptrcount = c.briskScaleSpace.pyramid_[i].ptrcount + 1;
+		for (int i = 0; i < layerExpected; i++) {
+			briskScaleSpace.pyramid_[i].ptrcount =
+					c.briskScaleSpace.pyramid_[i].ptrcount + 1;
 		}
 	}
 
@@ -260,20 +248,12 @@ public:
 
 	int2 detectAndCompute(PtrStepSzb _image, float2* keypoints, float* kpSize,
 			float* kpScore, bool useProvidedKeypoints);
-	/*    void detectAndCompute( InputArray image, InputArray mask,
-	 CV_OUT std::vector<KeyPoint>& keypoints,
-	 OutputArray descriptors,
-	 bool useProvidedKeypoints );*/
 
 	int computeKeypointsNoOrientation(PtrStepSzb& _image, float2* keypoints,
 			float* kpSize, float* kpScore);
-	int2 computeDescriptorsAndOrOrientation(PtrStepSzb _image, float2* keypoints,
-			float* kpSize, float* kpScore, bool doDescriptors,
-			bool doOrientation, bool useProvidedKeypoints);
-	/*
-	 void computeDescriptorsAndOrOrientation(InputArray image, InputArray mask, std::vector<KeyPoint>& keypoints,
-	 OutputArray descriptors, bool doDescriptors, bool doOrientation,
-	 bool useProvidedKeypoints) const;*/
+	int2 computeDescriptorsAndOrOrientation(PtrStepSzb _image,
+			float2* keypoints, float* kpSize, float* kpScore,
+			bool doDescriptors, bool doOrientation, bool useProvidedKeypoints);
 
 	// Feature parameters
 	int threshold;
@@ -295,10 +275,7 @@ public:
 		int weighted_dx; // 1024.0/dx
 		int weighted_dy; // 1024.0/dy
 	};
-	/*    inline int smoothedIntensity(const cv::Mat& image,
-	 const cv::Mat& integral,const float key_x,
-	 const float key_y, const unsigned int scale,
-	 const unsigned int rot, const unsigned int point) const;*/
+
 	// pattern properties
 	BriskPatternPoint* patternPoints_;     //[i][rotation][scale]
 	unsigned int points_;                 // total number of collocation points
@@ -325,7 +302,6 @@ public:
 	float2* keypointsG;
 	float* kpSizeG;
 	float* kpScoreG;
-	int* _valuesG;             //todo: useless delete
 	PtrStepSzi _integralG;
 	PtrStepSzb descriptorsG;
 
@@ -350,8 +326,8 @@ const float BriskScaleSpace::basicSize_ = 12.0f;
  * @param offset_in
  */
 // construct a layer
-void BriskLayerOne::FuckReset(bool isFisrtTime,const PtrStepSzb& img_in, float scale_in,
-		float offset_in) {
+void BriskLayerOne::FuckReset(bool isFisrtTime, const PtrStepSzb& img_in,
+		float scale_in, float offset_in) {
 	ptrcount = 0;
 	hasFuckReset = true;
 	agast = Agast(img_.step);
@@ -359,23 +335,14 @@ void BriskLayerOne::FuckReset(bool isFisrtTime,const PtrStepSzb& img_in, float s
 
 	int* scoreData;
 	//PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
-	if( isFisrtTime )
-	{
-		scores_ = PtrStepSzi(1, true, img_.rows, img_.cols, scoreData, img_.cols);
+	if (isFisrtTime) {
+		scores_ = PtrStepSzi(1, true, img_.rows, img_.cols, scoreData,
+				img_.cols);
 		newArray(locTemp, maxPointNow, false);
 	}
-	//scores_ = cv::Mat_<unsigned char>::zeros(img_in.rows, img_in.cols);
-	// attention: this means that the passed image reference must point to persistent memory
 	scale_ = scale_in;
 	offset_ = offset_in;
 
-
-	// create an agast detector
-	//agast = Agast(img_.step);
-	/*  makeAgastOffsets(pixel_5_8_, (int)img_.step, AgastFeatureDetector::AGAST_5_8);
-	 makeAgastOffsets(pixel_9_16_, (int)img_.step, AgastFeatureDetector::OAST_9_16);*/
-
-	//poutp( img_in, "BriskLayerOne_img_in" );
 }
 
 /***
@@ -383,153 +350,45 @@ void BriskLayerOne::FuckReset(bool isFisrtTime,const PtrStepSzb& img_in, float s
  * @param layer
  * @param mode
  */
-// derive a layer
-void BriskLayerOne::FuckReset(bool isFisrtTime,const BriskLayerOne& layer, int mode) {
+void BriskLayerOne::FuckReset(bool isFisrtTime, const BriskLayerOne& layer,
+		int mode) {
 	hasFuckReset = true;
 	ptrcount = 0;
 	agast = Agast(
 			(mode == CommonParams::HALFSAMPLE) ?
 					layer.img().cols / 2 : 2 * (layer.img().cols / 3));
 	if (mode == CommonParams::HALFSAMPLE) {
-		//img_.create(layer.img().rows / 2, layer.img().cols / 2, CV_8U);
 
 		unsigned char* imgData;
-		//PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
 		img_ = PtrStepSzb(layer.img().rows / 2, layer.img().cols / 2, imgData,
 				layer.img().cols / 2);
-		halfsample(isFisrtTime,layer.img(), img_);
+		halfsample(isFisrtTime, layer.img(), img_);
 
 		scale_ = layer.scale() * 2;
 		offset_ = 0.5f * scale_ - 0.5f;
 	} else {
-		//img_.create(2 * (layer.img().rows / 3), 2 * (layer.img().cols / 3), CV_8U);
 
 		unsigned char* imgData;
-		//PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
 		img_ = PtrStepSzb(2 * (layer.img().rows / 3),
 				2 * (layer.img().cols / 3), imgData,
 				2 * (layer.img().cols / 3));
 
-		twothirdsample(isFisrtTime,layer.img(), img_);
+		twothirdsample(isFisrtTime, layer.img(), img_);
 		scale_ = layer.scale() * 1.5f;
 		offset_ = 0.5f * scale_ - 0.5f;
 	}
 
 	int* scoreData;
-	if( isFisrtTime )
-	{
-	//PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
-		scores_ = PtrStepSzi(1, true, img_.rows, img_.cols, scoreData, img_.cols);
+	if (isFisrtTime) {
+		scores_ = PtrStepSzi(1, true, img_.rows, img_.cols, scoreData,
+				img_.cols);
 		newArray(locTemp, maxPointNow, false);
 	}
-
-	//agast = Agast(img_.step);
 }
 
-/***
- * 使用现有img创造一个层，适用于copy
- * @param img_in
- * @param scale_in
- * @param offset_in
- */
-// construct a layer
-/*BriskLayerOne::BriskLayerOne(const PtrStepSzb& img_in, float scale_in,
-		float offset_in) :
-		agast(img_.step), saveTheOriginImage(false), ptrcount(0), hasFuckReset(true) {
-
-	img_ = img_in;
-
-	int* scoreData;
-	//PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
-	scores_ = PtrStepSzi(1, true, img_.rows, img_.cols, scoreData, img_.cols);
-	//scores_ = cv::Mat_<unsigned char>::zeros(img_in.rows, img_in.cols);
-	// attention: this means that the passed image reference must point to persistent memory
-	scale_ = scale_in;
-	offset_ = offset_in;
-
-	newArray(locTemp, maxPointNow, false);
-	// create an agast detector
-	//agast = Agast(img_.step);
-	  makeAgastOffsets(pixel_5_8_, (int)img_.step, AgastFeatureDetector::AGAST_5_8);
-	 makeAgastOffsets(pixel_9_16_, (int)img_.step, AgastFeatureDetector::OAST_9_16);
-
-	//poutp( img_in, "BriskLayerOne_img_in" );
-}*/
-
-/***
- * 降采样出一个新层
- * @param layer
- * @param mode
- */
-// derive a layer
-/*BriskLayerOne::BriskLayerOne(const BriskLayerOne& layer, int mode) :
-		ptrcount(0), saveTheOriginImage(false),agast(
-				(mode == CommonParams::HALFSAMPLE) ?
-						layer.img().cols / 2 : 2 * (layer.img().cols / 3)), hasFuckReset(
-				true) {
-	if (mode == CommonParams::HALFSAMPLE) {
-		//img_.create(layer.img().rows / 2, layer.img().cols / 2, CV_8U);
-
-		unsigned char* imgData;
-		//PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
-		img_ = PtrStepSzb(layer.img().rows / 2, layer.img().cols / 2, imgData,
-				layer.img().cols / 2);
-		halfsample(layer.img(), img_);
-
-		scale_ = layer.scale() * 2;
-		offset_ = 0.5f * scale_ - 0.5f;
-	} else {
-		//img_.create(2 * (layer.img().rows / 3), 2 * (layer.img().cols / 3), CV_8U);
-
-		unsigned char* imgData;
-		//PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
-		img_ = PtrStepSzb(2 * (layer.img().rows / 3),
-				2 * (layer.img().cols / 3), imgData,
-				2 * (layer.img().cols / 3));
-
-		twothirdsample(layer.img(), img_);
-		scale_ = layer.scale() * 1.5f;
-		offset_ = 0.5f * scale_ - 0.5f;
-	}
-
-	int* scoreData;
-	//PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
-	scores_ = PtrStepSzi(1, true, img_.rows, img_.cols, scoreData, img_.cols);
-	newArray(locTemp, maxPointNow, false);
-	agast = Agast(img_.step);
-	//agast = Agast(img_.step);
-}*/
-/***
- * changed
- */
 int BriskLayerOne::getAgastPoints(int threshold, short2* keypoints,
 		float* scores) {
-	//poutp( img_, "getAgastPoints" );
-	//oast_9_16_->setThreshold(threshold);
-	//oast_9_16_->detect(img_, keypoints);
-
-	//__CV_CUDA_HOST_DEVICE__ PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
-	/*  int* scoreData;
-
-	 //PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
-	 PtrStepSzi scores(true, img_.rows, img_.cols, scoreData, img_.cols);
-
-	 short2* loc;
-	 newArray( loc, 3000, true );
-
-	 float* response;//todo: delete
-	 newArray( response, 3000, false );*/
-
-	//int detectMe1( PtrStepSzb image, short2* keyPoints, PtrStepSzi scores, short2* loc, float* response, int threshold=10, int maxPoints=5000, bool ifNoMaxSup = true);
 	return detectMe1(img_, locTemp, scores_, keypoints, scores, threshold);
-
-	//return num;
-	// also write scores
-	//const size_t num = keypoints.size();
-
-	/*  for (size_t i = 0; i < num; i++)
-	 scores_((int)keypoints[i].pt.y, (int)keypoints[i].pt.x) = saturate_cast<unsigned char>(keypoints[i].response);*/
-	//scores_ = scores;
 }
 
 /***
@@ -546,16 +405,6 @@ __device__ inline int BriskLayerOne::getAgastScore(const int x, const int y,
 	if (x >= img_.cols - 3 || y >= img_.rows - 3)
 		return 0;
 	return scores_(y, x);
-	/*return score;
-
-	 if (score > 2) //todo: 优化
-	 {
-	 return score;
-	 }
-	 score = (unsigned char)agast_cornerScore<AgastFeatureDetector::OAST_9_16>(&img_.at<unsigned char>(y, x), pixel_9_16_, threshold - 1);
-	 if (score < threshold)
-	 score = 0;
-	 return score;*/
 }
 
 /***
@@ -604,7 +453,6 @@ __device__ inline int BriskLayerOne::getAgastScore(float xf, float yf,
 		// this means we overlap area smoothing
 		const float halfscale = scale_in / 2.0f;
 
-		//这特么在搞啥？有病？
 		// get the scores first:
 		for (int x = int(xf - halfscale); x <= int(xf + halfscale + 1.0f);
 				x++) {
@@ -618,7 +466,6 @@ __device__ inline int BriskLayerOne::getAgastScore(float xf, float yf,
 	}
 }
 
-//可以直接移植
 /***
  * 取一定范围内的亮度平滑值？这函数又没几个人调用，我也是服气的
  * @param mat
@@ -633,12 +480,11 @@ __device__ inline int BriskLayerOne::getAgastScore(float xf, float yf,
  */
 __device__ inline int BriskLayerOne::value(const PtrStepSzi mat, float xf,
 		float yf, float scale_in) const {
-	//CV_Assert(!mat.empty());
 	// get the position
 	const int x = (xf);
 	const int y = (yf);
 	const PtrStepSzi& image = mat;
-	const int& imagecols = image.step;//todo : check if right
+	const int& imagecols = image.step; //todo : check if right
 
 	// get the sigma_half:
 	const float sigma_half = scale_in / 2;
@@ -736,7 +582,8 @@ __device__ inline int BriskLayerOne::value(const PtrStepSzi mat, float xf,
  * @param dstimg
  */
 // half sampling
-void BriskLayerOne::resize2(bool isFisrtTime,const PtrStepSzb& srcimg, PtrStepSzb& dstimg) {
+void BriskLayerOne::resize2(bool isFisrtTime, const PtrStepSzb& srcimg,
+		PtrStepSzb& dstimg) {
 
 	float nScaleFactor = 1.0 / 2.0;
 	float shiftFactor = 0;
@@ -753,16 +600,13 @@ void BriskLayerOne::resize2(bool isFisrtTime,const PtrStepSzb& srcimg, PtrStepSz
 	nppiGetResizeRect(oSrcImageROI, &oDstImageROI, nScaleFactor, nScaleFactor,
 			shiftFactor, shiftFactor, eInterploationMode);
 
-	dstSize.height = oDstImageROI.height;  //+ (srcSize.height%3==0)?0:1;
-	dstSize.width = oDstImageROI.width;  //+ (srcSize.width%3==0)?0:1;
+	dstSize.height = oDstImageROI.height;
+	dstSize.width = oDstImageROI.width;
 
-	if( isFisrtTime )
-	{
+	if (isFisrtTime) {
 		CUDA_CHECK_RETURN(
-			cudaMalloc(&(dstimg.data), dstSize.height * dstSize.width));
+				cudaMalloc(&(dstimg.data), dstSize.height * dstSize.width));
 	}
-	///int patch = dstSize.width;
-	//CUDA_CHECK_RETURN(cudaMallocPitch( &(dstimg.data), &patch, dstSize.width, dstSize.height ));
 
 	dstimg.cols = dstSize.width;
 	dstimg.rows = dstSize.height;
@@ -774,7 +618,8 @@ void BriskLayerOne::resize2(bool isFisrtTime,const PtrStepSzb& srcimg, PtrStepSz
 	return;
 }
 
-void BriskLayerOne::resize3_2(bool isFisrtTime,const PtrStepSzb& srcimg, PtrStepSzb& dstimg) {
+void BriskLayerOne::resize3_2(bool isFisrtTime, const PtrStepSzb& srcimg,
+		PtrStepSzb& dstimg) {
 
 	float nScaleFactor = 2.0 / 3.0;
 	float shiftFactor = 0;
@@ -791,16 +636,13 @@ void BriskLayerOne::resize3_2(bool isFisrtTime,const PtrStepSzb& srcimg, PtrStep
 	nppiGetResizeRect(oSrcImageROI, &oDstImageROI, nScaleFactor, nScaleFactor,
 			shiftFactor, shiftFactor, eInterploationMode);
 
-	dstSize.height = oDstImageROI.height;	//+ (srcSize.height%3==0)?0:1;
-	dstSize.width = oDstImageROI.width;	//+ (srcSize.width%3==0)?0:1;
+	dstSize.height = oDstImageROI.height;
+	dstSize.width = oDstImageROI.width;
 
-	if( isFisrtTime )
-	{
+	if (isFisrtTime) {
 		CUDA_CHECK_RETURN(
-			cudaMalloc(&(dstimg.data), dstSize.height * dstSize.width));
+				cudaMalloc(&(dstimg.data), dstSize.height * dstSize.width));
 	}
-	///int patch = dstSize.width;
-	//CUDA_CHECK_RETURN(cudaMallocPitch( &(dstimg.data), &patch, dstSize.width, dstSize.height ));
 
 	dstimg.cols = dstSize.width;
 	dstimg.rows = dstSize.height;
@@ -813,26 +655,22 @@ void BriskLayerOne::resize3_2(bool isFisrtTime,const PtrStepSzb& srcimg, PtrStep
 	return;
 }
 
-inline void BriskLayerOne::halfsample(bool isFisrtTime,const PtrStepSzb& srcimg,
-		PtrStepSzb& dstimg) {
+inline void BriskLayerOne::halfsample(bool isFisrtTime,
+		const PtrStepSzb& srcimg, PtrStepSzb& dstimg) {
 	// make sure the destination image is of the right size:
 	assert(srcimg.cols / 2 == dstimg.cols);
 	assert(srcimg.rows / 2 == dstimg.rows);
 
-	// handle non-SSE case
-	resize2(isFisrtTime,srcimg, dstimg);
+	resize2(isFisrtTime, srcimg, dstimg);
 }
 
-/***
- * todo: 可以考虑GPU加速
- */
-inline void BriskLayerOne::twothirdsample(bool isFisrtTime,const PtrStepSzb& srcimg,
-		PtrStepSzb& dstimg) {
+inline void BriskLayerOne::twothirdsample(bool isFisrtTime,
+		const PtrStepSzb& srcimg, PtrStepSzb& dstimg) {
 	// make sure the destination image is of the right size:
 	assert((srcimg.cols / 3) * 2 == dstimg.cols);
 	assert((srcimg.rows / 3) * 2 == dstimg.rows);
 
-	resize3_2(isFisrtTime,srcimg, dstimg);
+	resize3_2(isFisrtTime, srcimg, dstimg);
 }
 
 //wangwang0
@@ -854,33 +692,20 @@ BriskScaleSpace::BriskScaleSpace(int _octaves) :
 	pyramid_[0].saveTheOriginImage = true;
 }
 
-void BriskScaleSpace::constructPyramid( PtrStepSzb& image, bool isFisrtTime) {
-	//assert( layers_ == 8 );
+void BriskScaleSpace::constructPyramid(PtrStepSzb& image, bool isFisrtTime) {
 
 	const int octaves2 = layers_;
-	//BriskLayerOne caonima(image);
-	pyramid_[0].FuckReset(isFisrtTime,image);
-
-	/*cout << pyramid_[0].img_.step << " " << pyramid_[0].img_.cols << " " << pyramid_[0].img_.rows << endl;
-	 bool temp = (pyramid_[0].img_.data == image.data);
-	 cout << temp << endl;
-	 poutp( pyramid_[0].img_, "constructPyramid-2" );*/
-	//BriskLayerOne caonima1(pyramid_[0], BriskLayerOne::CommonParams::TWOTHIRDSAMPLE);
-	pyramid_[1].FuckReset(isFisrtTime,pyramid_[0],
+	pyramid_[0].FuckReset(isFisrtTime, image);
+	pyramid_[1].FuckReset(isFisrtTime, pyramid_[0],
 			BriskLayerOne::CommonParams::TWOTHIRDSAMPLE);
 
-	//poutp( pyramid_[1].img_, "constructPyramid-1" );
-
 	for (int i = 2; i < octaves2; i += 2) {
-		//BriskLayerOne caonima1(pyramid_[i - 2], BriskLayerOne::CommonParams::HALFSAMPLE);
-		//BriskLayerOne caonima2(pyramid_[i - 1], BriskLayerOne::CommonParams::HALFSAMPLE);
-		pyramid_[i].FuckReset(isFisrtTime,pyramid_[i - 2],
+		pyramid_[i].FuckReset(isFisrtTime, pyramid_[i - 2],
 				BriskLayerOne::CommonParams::HALFSAMPLE);
-		pyramid_[i + 1].FuckReset(isFisrtTime,pyramid_[i - 1],
+		pyramid_[i + 1].FuckReset(isFisrtTime, pyramid_[i - 1],
 				BriskLayerOne::CommonParams::HALFSAMPLE);
 		;
 	}
-	//poutp( pyramid_[2].img_, "constructPyramid" );
 }
 
 /***
@@ -892,18 +717,11 @@ int BriskScaleSpace::getKeypoints(const int threshold_, float2* keypoints,
 		float* kpSize, float* kpScore) {
 
 	int maxLayersPoints = 0;
-	// assign thresholds
+
 	int safeThreshold_ = (int) (threshold_ * safetyFactor_);
-	// std::vector<std::vector<cv::KeyPoint> > agastPoints;
 
-	//agastPoints.resize(layers_);
-
-	// go through the octaves and intra layers and calculate agast corner scores:
 	for (int i = 0; i < layers_; i++) {
-		//newArray( kpsLoc[i], maxPointNow, false   );
-		// call OAST16_9 without nms
 		BriskLayerOne& l = pyramid_[i];
-		//poutp( l.img_, "getKeypoints" );
 		kpsCount[i] = l.getAgastPoints(safeThreshold_, kpsLoc[i], scoreTemp); //todo: 并行化
 		maxLayersPoints =
 				kpsCount[i] > maxLayersPoints ? kpsCount[i] : maxLayersPoints;
@@ -911,9 +729,7 @@ int BriskScaleSpace::getKeypoints(const int threshold_, float2* keypoints,
 
 	if (layers_ == 1) {
 
-		//todo: need a global kernel,optmize kernal gird and block
-		// just do a simple 2d subpixel refinement...
-		//const size_t num = agastPoints[0].size();
+		//todo:optmize kernal gird and block
 
 		void* counter_ptr;
 		CUDA_CHECK_RETURN(cudaGetSymbolAddress(&counter_ptr, g_counter1));
@@ -924,40 +740,13 @@ int BriskScaleSpace::getKeypoints(const int threshold_, float2* keypoints,
 		refineKernel1<<<kpsCount[0] / (32 * 4) + 1, 32 * 4, 0>>>(*this,
 				keypoints, kpSize, kpScore, threshold_, 0);
 
-		CUDA_CHECK_RETURN(cudaGetLastError());    //todo: cudaSafeCall
+		CUDA_CHECK_RETURN(cudaGetLastError());
 
 		CUDA_CHECK_RETURN(
 				cudaMemcpyAsync(&kpsCountAfter[0], counter_ptr,
-						sizeof(unsigned int), cudaMemcpyDeviceToHost)); //todo: cudaSafeCall
+						sizeof(unsigned int), cudaMemcpyDeviceToHost));
 
-		CUDA_CHECK_RETURN(cudaStreamSynchronize(NULL));    //todo: cudaSafeCall
-
-		/* for (size_t n = 0; n < num; n++)
-		 {
-		 const cv::Point2f& point = agastPoints.at(0)[n].pt;
-		 // first check if it is a maximum:
-		 //非极大值抑制
-		 if (!isMax2D(0, (int)point.x, (int)point.y))
-		 continue;
-
-		 // let's do the subpixel and float scale refinement:
-		 BriskLayerOne& l = pyramid_[0];
-		 int s_0_0 = l.getAgastScore(point.x - 1, point.y - 1, 1);
-		 int s_1_0 = l.getAgastScore(point.x, point.y - 1, 1);
-		 int s_2_0 = l.getAgastScore(point.x + 1, point.y - 1, 1);
-		 int s_2_1 = l.getAgastScore(point.x + 1, point.y, 1);
-		 int s_1_1 = l.getAgastScore(point.x, point.y, 1);
-		 int s_0_1 = l.getAgastScore(point.x - 1, point.y, 1);
-		 int s_0_2 = l.getAgastScore(point.x - 1, point.y + 1, 1);
-		 int s_1_2 = l.getAgastScore(point.x, point.y + 1, 1);
-		 int s_2_2 = l.getAgastScore(point.x + 1, point.y + 1, 1);
-		 float delta_x, delta_y;
-		 float max = subpixel2D(s_0_0, s_0_1, s_0_2, s_1_0, s_1_1, s_1_2, s_2_0, s_2_1, s_2_2, delta_x, delta_y);
-
-		 // store:
-		 keypoints.push_back(cv::KeyPoint(float(point.x) + delta_x, float(point.y) + delta_y, basicSize_, -1, max, 0));
-
-		 }*/
+		CUDA_CHECK_RETURN(cudaStreamSynchronize(NULL));
 
 		return kpsCountAfter[0];
 	}
@@ -969,8 +758,6 @@ int BriskScaleSpace::getKeypoints(const int threshold_, float2* keypoints,
 
 	CUDA_CHECK_RETURN(cudaMemsetAsync(counter_ptr, 0, sizeof(unsigned int)));
 
-	// cout << "" << maxLayersPoints << endl;
-
 	dim3 grid;
 	grid.x = layers_;
 	grid.y = (maxLayersPoints < 32 ? 32 : maxLayersPoints) / 32; //todo optimize
@@ -979,85 +766,15 @@ int BriskScaleSpace::getKeypoints(const int threshold_, float2* keypoints,
 	refineKernel2<<<grid, 32, 0>>>(*this, keypoints, kpSize, kpScore,
 			threshold_);
 
-	CUDA_CHECK_RETURN(cudaGetLastError());    //todo: cudaSafeCall
+	CUDA_CHECK_RETURN(cudaGetLastError());
 
 	CUDA_CHECK_RETURN(
 			cudaMemcpyAsync(&kpsCountAfter[0], counter_ptr,
-					sizeof(unsigned int), cudaMemcpyDeviceToHost)); //todo: cudaSafeCall
+					sizeof(unsigned int), cudaMemcpyDeviceToHost));
 
-	CUDA_CHECK_RETURN(cudaStreamSynchronize(NULL));    //todo: cudaSafeCall
+	CUDA_CHECK_RETURN(cudaStreamSynchronize(NULL));
 
 	return kpsCountAfter[0];
-
-	/*  for (int i = 0; i < layers_; i++)
-	 {
-	 BriskLayer& l = pyramid_[i];
-	 const size_t num = agastPoints[i].size();
-	 if (i == layers_ - 1)
-	 {
-	 for (size_t n = 0; n < num; n++)
-	 {
-	 const cv::Point2f& point = agastPoints.at(i)[n].pt;
-	 // consider only 2D maxima...
-	 if (!isMax2D(i, (int)point.x, (int)point.y))
-	 continue;
-
-	 bool ismax;
-	 float dx, dy;
-	 getScoreMaxBelow(i, (int)point.x, (int)point.y, l.getAgastScore(point.x, point.y, safeThreshold_), ismax, dx, dy);
-	 if (!ismax)
-	 continue;
-
-	 // get the patch on this layer:
-	 int s_0_0 = l.getAgastScore(point.x - 1, point.y - 1, 1);
-	 int s_1_0 = l.getAgastScore(point.x, point.y - 1, 1);
-	 int s_2_0 = l.getAgastScore(point.x + 1, point.y - 1, 1);
-	 int s_2_1 = l.getAgastScore(point.x + 1, point.y, 1);
-	 int s_1_1 = l.getAgastScore(point.x, point.y, 1);
-	 int s_0_1 = l.getAgastScore(point.x - 1, point.y, 1);
-	 int s_0_2 = l.getAgastScore(point.x - 1, point.y + 1, 1);
-	 int s_1_2 = l.getAgastScore(point.x, point.y + 1, 1);
-	 int s_2_2 = l.getAgastScore(point.x + 1, point.y + 1, 1);
-	 float delta_x, delta_y;
-	 float max = subpixel2D(s_0_0, s_0_1, s_0_2, s_1_0, s_1_1, s_1_2, s_2_0, s_2_1, s_2_2, delta_x, delta_y);
-
-	 // store:
-	 keypoints.push_back(
-	 cv::KeyPoint((float(point.x) + delta_x) * l.scale() + l.offset(),
-	 (float(point.y) + delta_y) * l.scale() + l.offset(), basicSize_ * l.scale(), -1, max, i));
-	 }
-	 }
-	 else
-	 {
-	 // not the last layer:
-	 for (size_t n = 0; n < num; n++)
-	 {
-	 const cv::Point2f& point = agastPoints.at(i)[n].pt;
-
-	 // first check if it is a maximum:
-	 if (!isMax2D(i, (int)point.x, (int)point.y))
-	 continue;
-
-	 // let's do the subpixel and float scale refinement:
-	 bool ismax=false;
-
-	 //可见refine3D是真正判断是否最大的货色
-	 score = refine3D(i, (int)point.x, (int)point.y, x, y, scale, ismax);
-	 if (!ismax)
-	 {
-	 continue;
-	 }
-
-
-	 //理解这个basicSize的真实含义
-	 // finally store the detected keypoint:
-	 if (score > float(threshold_))
-	 {
-	 keypoints.push_back(cv::KeyPoint(x, y, basicSize_ * scale, -1, score, i));
-	 }
-	 }
-	 }
-	 }*/
 }
 
 //直接移植
@@ -1104,7 +821,6 @@ __device__ inline int BriskScaleSpace::getScoreAbove(BriskLayerOne* layers,
 	}
 }
 
-//直接移植
 __device__ inline int BriskScaleSpace::getScoreBelow(BriskLayerOne* layers,
 		const int layer, const int x_layer, const int y_layer) const {
 	assert(layer);
@@ -1198,7 +914,6 @@ __device__ inline int BriskScaleSpace::getScoreBelow(BriskLayerOne* layers,
 	return ((ret_val + scaling2 / 2) / scaling2);
 }
 
-//直接移植
 /***
  * 2维平面的最大值抑制
  * @param layer
@@ -1246,7 +961,6 @@ __device__ inline bool BriskScaleSpace::isMax2D(BriskLayerOne* layers,
 	if (center < s_1_1)
 		return false;
 
-	//对相等情况的特殊处理
 	// reject neighbor maxima
 	int delta[20];
 	int deltaIndex = 0;
@@ -1485,9 +1199,6 @@ __device__ inline float BriskScaleSpace::refine3D(BriskLayerOne* layers,
 	return max;
 }
 
-/***
- *直接移植？
- */
 // return the maximum of score patches above or below
 __device__ inline float BriskScaleSpace::getScoreMaxAbove(BriskLayerOne* layers,
 		const int layer, const int x_layer, const int y_layer,
@@ -1829,7 +1540,6 @@ __device__ inline float BriskScaleSpace::getScoreMaxBelow(BriskLayerOne* layers,
 	return max;
 }
 
-//直接移植
 /***
  * 定系数2次函数差值样本1,
  * 此时的二次函数y1，y2,y3值已经给定，x1,x2,x3由调用时上下层的前后位置关系决定
@@ -1881,7 +1591,6 @@ __device__ inline float BriskScaleSpace::refine1D(const float s_05,
 	return ret_val;
 }
 
-//直接移植
 /***
  * 定系数2次函数差值样本1
  * @param s_05
@@ -1974,7 +1683,6 @@ __device__ inline float BriskScaleSpace::refine1D_2(const float s_05,
 	return ret_val;
 }
 
-//直接移植
 /***
  * 猜想：9个像素的方格不知道干啥
  * 反正返回的是一个9点插值亮度？
@@ -2215,15 +1923,10 @@ __global__ void refineKernel2(BriskScaleSpace space, float2* keypoints,
 					(float(point.y) + delta_y) * l.scale() + l.offset());
 			kpSize[ind] = space.basicSize_ * l.scale();
 			kpScore[ind] = max;
-			/*              // store:
-			 keypoints.push_back(
-			 cv::KeyPoint((float(point.x) + delta_x) * l.scale() + l.offset(),
-			 (float(point.y) + delta_y) * l.scale() + l.offset(), basicSize_ * l.scale(), -1, max, i));*/
-			// }
+
 		} else {
 			// not the last layer:
-			//for (size_t n = 0; n < num; n++)
-			//{
+
 			const short2& point = space.kpsLoc[i][n];
 
 			// first check if it is a maximum:
@@ -2266,25 +1969,13 @@ __global__ void refineKernel2(BriskScaleSpace space, float2* keypoints,
 
 int BRISK_Impl::computeKeypointsNoOrientation(PtrStepSzb& _image,
 		float2* keypoints, float* kpSize, float* kpScore) {
-	/* Mat image = _image.getMat(), mask = _mask.getMat();
-	 if( image.type() != CV_8UC1 )
-	 cvtColor(_image, image, COLOR_BGR2GRAY);*/
 
-	//(const int threshold_, float2* keypoints, float* kpSize, float* kpScore)
-	// todo: insure octaves == 8
-
-	if( isFirstTime )
-	{
-		briskScaleSpace.constructPyramid(_image,true);
+	if (isFirstTime) {
+		briskScaleSpace.constructPyramid(_image, true);
 		isFirstTime = false;
+	} else {
+		briskScaleSpace.constructPyramid(_image, false);
 	}
-	else
-	{
-		briskScaleSpace.constructPyramid(_image,false);
-	}
-
-
-
 
 	//int ret = 0;
 	return briskScaleSpace.getKeypoints(threshold, keypoints, kpSize, kpScore);
@@ -2296,7 +1987,7 @@ int BRISK_Impl::computeKeypointsNoOrientation(PtrStepSzb& _image,
 //todo: 更正
 __host__ BRISK_Impl::~BRISK_Impl() {
 	if (ptrcount == 0) {
-		cout << "got me ~BRISK_Impl" << endl;
+		//cout << "got me ~BRISK_Impl" << endl;
 		CUDA_CHECK_RETURN(cudaFree(patternPoints_));
 		CUDA_CHECK_RETURN(cudaFree(shortPairs_));
 		CUDA_CHECK_RETURN(cudaFree(longPairs_));
@@ -2318,23 +2009,12 @@ __host__ BRISK_Impl::~BRISK_Impl() {
  */
 __device__ inline bool RoiPredicate(const float minX, const float minY,
 		const float maxX, const float maxY, const float2& pt) {
-	//const Point2f& pt = keyPt.pt;
 	return (pt.x < minX) || (pt.x >= maxX) || (pt.y < minY) || (pt.y >= maxY);
-}
-
-__global__ void deleteBorderkernel(BRISK_Impl briskImpl, const int ksize,
-		float2* keypoints, float* kpSize, float* kpScore, PtrStepSzb _image) {
-	const int k = threadIdx.x + blockIdx.x * blockDim.x;
-
-
-	/*}*/
 }
 
 #define CV_PI   3.1415926535897932384626433832795
 #define CV_2PI 6.283185307179586476925286766559
 #define CV_LOG2 0.69314718055994530941723212145818
-
-// simple alternative:
 
 /***
  * 因为是计算单个点的亮度值，又没有循环，直接当做__device__代码即可
@@ -2347,13 +2027,10 @@ __global__ void deleteBorderkernel(BRISK_Impl briskImpl, const int ksize,
  * @param point
  * @return
  */
-__device__ inline int
-/*BRISK_Impl:: todo: check right*/
-smoothedIntensity(BRISK_Impl& briskImpl, PtrStepSzb& image,
-		PtrStepSzi& integral, const float key_x, const float key_y,
-		const unsigned int scale, const unsigned int rot,
+__device__ inline int smoothedIntensity(BRISK_Impl& briskImpl,
+		PtrStepSzb& image, PtrStepSzi& integral, const float key_x,
+		const float key_y, const unsigned int scale, const unsigned int rot,
 		const unsigned int point) {
-
 
 	// get the float position
 	const BRISK_Impl::BriskPatternPoint& briskPoint =
@@ -2363,7 +2040,7 @@ smoothedIntensity(BRISK_Impl& briskImpl, PtrStepSzb& image,
 	const float yf = briskPoint.y + key_y;
 	const int x = int(xf);
 	const int y = int(yf);
-	const int& imagecols = image.step;//todo: check if right
+	const int& imagecols = image.step;	//todo: check if right
 
 	// get the sigma:
 	const float sigma_half = briskPoint.sigma;
@@ -2420,7 +2097,6 @@ smoothedIntensity(BRISK_Impl& briskImpl, PtrStepSzb& image,
 	const int r_x1_i = (int) (r_x1 * scaling);
 	const int r_y1_i = (int) (r_y1 * scaling);
 
-
 	if (dx + dy > 2) {
 
 		// now the calculation:
@@ -2437,7 +2113,7 @@ smoothedIntensity(BRISK_Impl& briskImpl, PtrStepSzb& image,
 
 		// next the edges:
 		const int* ptr_integral = integral.data + x_left + integralcols * y_top
-				+ 1; //todo: error: what int?!!!
+				+ 1;
 		// find a simple path through the different surface corners
 		const int tmp1 = (*ptr_integral);
 		ptr_integral += dx;
@@ -2463,9 +2139,6 @@ smoothedIntensity(BRISK_Impl& briskImpl, PtrStepSzb& image,
 		ptr_integral++;
 		const int tmp12 = (*ptr_integral);
 
-
-
-
 		// assign the weighted surface integrals:
 		const int upper = (tmp3 - tmp2 + tmp1 - tmp12) * r_y_1_i;
 		const int middle = (tmp6 - tmp3 + tmp12 - tmp9) * scaling;
@@ -2473,9 +2146,9 @@ smoothedIntensity(BRISK_Impl& briskImpl, PtrStepSzb& image,
 		const int right = (tmp5 - tmp4 + tmp3 - tmp6) * r_x1_i;
 		const int bottom = (tmp7 - tmp6 + tmp9 - tmp8) * r_y1_i;
 
-		return (ret_val + upper + middle + left + right + bottom + scaling2 / 2)/ scaling2;
+		return (ret_val + upper + middle + left + right + bottom + scaling2 / 2)
+				/ scaling2;
 	}
-
 
 	// now the calculation:
 	const unsigned char* ptr = image.data + x_left + imagecols * y_top;
@@ -2511,11 +2184,10 @@ smoothedIntensity(BRISK_Impl& briskImpl, PtrStepSzb& image,
 	return (ret_val + scaling2 / 2) / scaling2;
 }
 
-//todo:合二为一
 __global__ void generateDesKernel(BRISK_Impl briskImpl, const int ksize,
 		float2* keypoints, float* kpSize, float* kpScore, PtrStepSzb _image,
 		bool doDescriptors, bool doOrientation, bool useProvidedKeypoints) {
-	//cout << 1 << endl;
+
 	const int k = threadIdx.x + blockIdx.x * blockDim.x;
 	float angle = 0;
 	unsigned int ind = 0;
@@ -2527,15 +2199,10 @@ __global__ void generateDesKernel(BRISK_Impl briskImpl, const int ksize,
 
 	const float log2 = 0.693147180559945f;
 	const float lb_scalerange = (float) (log(BRISK_Impl::scalerange_) / (log2));
-	//std::vector<cv::KeyPoint>::iterator beginning = keypoints.begin();
-	//std::vector<int>::iterator beginningkscales = kscales.begin();
+
 	const float basicSize06 = briskImpl.basicSize_ * 0.6f;
 
-	//算的真辛苦，只不过是把采样点超出图像的keypoint删除了
-	//todo : 无法理解为啥scale_=64
 	unsigned int scale;
-	/*	  for (size_t k = 0; k < ksize; k++)
-	 {*/
 
 	scale = max(
 			(int) (briskImpl.scales_ / lb_scalerange
@@ -2553,9 +2220,7 @@ __global__ void generateDesKernel(BRISK_Impl briskImpl, const int ksize,
 		briskImpl.kscalesG[k] = -1;	  //mark as bad.
 
 		return;
-	}
-	else
-	{
+	} else {
 		ind = atomicInc(&g_counter1, (unsigned int) (-1));
 		ptr = briskImpl.descriptorsG.data + (ind) * briskImpl.strings_;
 	}
@@ -2564,12 +2229,11 @@ __global__ void generateDesKernel(BRISK_Impl briskImpl, const int ksize,
 	int t2;
 
 	// the feature orientation
-	//const  = briskImpl.descriptorsG.data + (k) * briskImpl.strings_;
 
 	float2 kp = keypoints[k];
 	const int& scale1 = briskImpl.kscalesG[k];
 
-	int* valuesIn = new int[briskImpl.points_];//todo: if memset is necessary
+	int* valuesIn = new int[briskImpl.points_];
 	int* pvalues = valuesIn;
 	const float& x = kp.x;
 	const float& y = kp.y;
@@ -2660,12 +2324,8 @@ __global__ void generateDesKernel(BRISK_Impl briskImpl, const int ksize,
 			++ptr2;
 		}
 	}
-
-	//ptr += briskImpl.strings_;
-
 }
 
-//todo: imple
 void integral(PtrStepSzb _image, PtrStepSzi ret) {
 	NppiSize dstSize;
 	dstSize.height = _image.rows;
@@ -2673,11 +2333,11 @@ void integral(PtrStepSzb _image, PtrStepSzi ret) {
 
 	nppiIntegral_8u32s_C1R(_image.data, _image.step, (Npp32s*) (ret.data),
 			ret.step, dstSize, 0);
-	//suppose data has been init
+
 }
 
 /***
- * tpdo: init keypoint and dec....
+ *
  * 入口函数1
  * @param _image
  * @param _mask
@@ -2690,10 +2350,6 @@ void integral(PtrStepSzb _image, PtrStepSzi ret) {
 int2 BRISK_Impl::computeDescriptorsAndOrOrientation(PtrStepSzb _image,
 		float2* keypoints, float* kpSize, float* kpScore, bool doDescriptors,
 		bool doOrientation, bool useProvidedKeypoints) {
-	/* Mat image = _image.getMat(), mask = _mask.getMat();
-	 if( image.type() != CV_8UC1 )
-	 cvtColor(image, image, COLOR_BGR2GRAY);
-	 */
 
 	int keyPointsCount = 0;
 
@@ -2704,30 +2360,17 @@ int2 BRISK_Impl::computeDescriptorsAndOrOrientation(PtrStepSzb _image,
 	}
 	integral(_image, _integralG);
 
-	//cleanArray(descriptorsG.data, maxPointNow * strings_);
-
 	//Remove keypoints very close to the border
 	int ksize = keyPointsCount;
 
-	//std::vector<int> kscales; // remember the scale per keypoint
-	//kscales.resize(ksize);
 	void* counter_ptr;
 	CUDA_CHECK_RETURN(cudaGetSymbolAddress(&counter_ptr, g_counter1));
 
 	CUDA_CHECK_RETURN(cudaMemsetAsync(counter_ptr, 0, sizeof(unsigned int)));
 
-	// deleteBorderkernel( BRISK_Impl briskImpl, const int ksize,  float2* keypoints, float* kpSize, float* kpScore, PtrStepSzb _image )
-
-/*	deleteBorderkernel<<<ksize / 32 + 1, 32>>>(*this, ksize, keypoints, kpSize,
-			kpScore, _image);*/
-	// now do the extraction for all keypoints:
-	//__global__ void generateDesKernel( BRISK_Impl briskImpl, const int ksize,  float2* keypoints, float* kpSize, float* kpScore, PtrStepSzb _image, bool doDescriptors, bool doOrientation,
-
-	// temporary variables containing gray values at sample points:
 	generateDesKernel<<<(ksize < 32 ? 32 : ksize) / 32 + 1, 32>>>(*this, ksize,
 			keypoints, kpSize, kpScore, _image, doDescriptors, doOrientation,
 			useProvidedKeypoints);
-
 
 	CUDA_CHECK_RETURN(cudaGetLastError());
 	int temp;
@@ -2736,21 +2379,15 @@ int2 BRISK_Impl::computeDescriptorsAndOrOrientation(PtrStepSzb _image,
 					cudaMemcpyDeviceToHost)); //todo: change to no-async?
 
 	CUDA_CHECK_RETURN(cudaStreamSynchronize(NULL));
-	// clean-up
-	//delete[] _values;
-	return make_int2(ksize,temp); //debug
-	//return ksize-temp;
+
+	return make_int2(ksize, temp);
 }
 
 int2 BRISK_Impl::detectAndCompute(PtrStepSzb _image, float2* keypoints,
 		float* kpSize, float* kpScore, bool useProvidedKeypoints) {
 	bool doOrientation = true;
 
-	// If the user specified cv::noArray(), this will yield false. Otherwise it will return true.
-	//bool doDescriptors = _descriptors.needed();
 	bool doDescriptors = true;
-
-
 
 	return computeDescriptorsAndOrOrientation(_image, keypoints, kpSize,
 			kpScore, doDescriptors, doOrientation, useProvidedKeypoints);
@@ -2781,7 +2418,6 @@ void BRISK_Impl::generateKernel(const float* radiusList, const int* numberList,
 	// set up the patterns
 	BriskPatternPoint* patternPoints_i = new BriskPatternPoint[points_ * scales_
 			* n_rot_];
-	//newArray( patternPoints_, points_ * scales_ * n_rot_, 1 );
 
 	BriskPatternPoint* patternIterator = patternPoints_i;
 
@@ -2791,11 +2427,6 @@ void BRISK_Impl::generateKernel(const float* radiusList, const int* numberList,
 
 	float* scaleList_i = new float[scales_];
 	unsigned int* sizeList_i = new unsigned int[scales_];
-
-	/*
-	 scaleList_ = new float[scales_];
-	 sizeList_ = new unsigned int[scales_];
-	 */
 
 	const float sigma_scale = 1.3f;
 
@@ -2844,8 +2475,6 @@ void BRISK_Impl::generateKernel(const float* radiusList, const int* numberList,
 
 	// now also generate pairings
 
-	/*  shortPairs_ = new BriskShortPair[points_ * (points_ - 1) / 2];
-	 longPairs_ = new BriskLongPair[points_ * (points_ - 1) / 2];*/
 	BriskShortPair* shortPairs_i = new BriskShortPair[points_ * (points_ - 1)
 			/ 2];
 	BriskLongPair* longPairs_i = new BriskLongPair[points_ * (points_ - 1) / 2];
@@ -2898,13 +2527,6 @@ void BRISK_Impl::generateKernel(const float* radiusList, const int* numberList,
 
 	//start memCopy
 
-	//free(indexChange);
-
-	//CUDA_CHECK_RETURN(cudaDeviceSynchronize());
-
-	/*  CUDA_CHECK_RETURN(cudaMalloc((void**)&temptestInner, sizeof(int)));
-	 CUDA_CHECK_RETURN(cudaMemcpy(temptestInner,&temptest,sizeof(int),cudaMemcpyHostToDevice));*/
-
 	newArray(shortPairs_, points_ * (points_ - 1) / 2, 1);
 	newArray(longPairs_, points_ * (points_ - 1) / 2, 1);
 	newArray(scaleList_, scales_, 1);
@@ -2941,26 +2563,7 @@ void BRISK_Impl::generateKernel(const float* radiusList, const int* numberList,
 
 BRISK_Impl::BRISK_Impl(int rows, int cols, int thresh, int octaves_in,
 		float patternScale) :
-		ptrcount(0), briskScaleSpace(octaves_in),isFirstTime(true) {
-	/*	- Member 'sizeList_' was not initialized in this constructor done
-	 - Member 'points_' was not initialized in this constructor done
-	 - Member 'dMax_' was not initialized in this constructor done
-	 - Member 'keypointsG' was not initialized in this constructor done
-	 - Member 'patternPoints_' was not initialized in this done
-	 constructor
-	 - Member 'shortPairs_' was not initialized in this constructor done
-	 - Member 'dMin_' was not initialized in this constructor done
-	 - Member 'scaleList_' was not initialized in this constructor done
-	 - Member 'kscalesG' was not initialized in this constructor done
-	 - Member '_valuesG' was not initialized in this constructor done
-	 - Member 'noLongPairs_' was not initialized in this done
-	 constructor
-	 - Member 'longPairs_' was not initialized in this constructor done
-	 - Member 'kpScoreG' was not initialized in this constructor done
-	 - Member 'strings_' was not initialized in this constructor done
-	 - Member 'noShortPairs_' was not initialized in this done
-	 constructor
-	 - Member 'kpSizeG' was not initialized in this constructor done */
+		ptrcount(0), briskScaleSpace(octaves_in), isFirstTime(true) {
 
 	threshold = thresh;
 	octaves = octaves_in;
@@ -2986,7 +2589,6 @@ BRISK_Impl::BRISK_Impl(int rows, int cols, int thresh, int octaves_in,
 	generateKernel(rList, nList, 5, (float) (5.85 * patternScale),
 			(float) (8.2 * patternScale));
 
-	newArray(_valuesG, points_, 1);//todo: useless delete
 	newArray(keypointsG, maxPointNow, 1);
 	newArray(kscalesG, maxPointNow, 1);
 
@@ -2995,17 +2597,11 @@ BRISK_Impl::BRISK_Impl(int rows, int cols, int thresh, int octaves_in,
 
 	unsigned char* temp;
 
-	//(int isHost, bool ifset_, int rows_, int cols_, T* data_, size_t step_)
 	descriptorsG = PtrStepSzb(1, true, 1, maxPointNow * strings_, temp,
 			maxPointNow * strings_);
 
-	//todo: make sure is right
 	int* temp1;
 	_integralG = PtrStepSzi(1, true, rows + 1, cols + 1, temp1, cols + 1);
-
-	//scores_ = PtrStepSzi(1,true, img_.rows, img_.cols, scoreData, img_.cols);
-	//PtrStepSzi _integralG; this will init in the integral function
-	//PtrStepSzb descriptorsG;
 }
 
 #endif /* BRISKSCALESPACE_CUH_ */
