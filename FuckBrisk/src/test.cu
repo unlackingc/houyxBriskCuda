@@ -62,6 +62,15 @@ void copyDescritpor( PtrStepSzb desGpu, cv::Mat& descriptor, int size, int singl
 	//descritpor.create((size, singleSize, CV_8U);
 }
 
+void copyDescritporDebug( PtrStepSzb desGpu, cv::Mat& descriptor, int size, int singleSize )
+{
+	descriptor.create(size,singleSize,CV_8U);
+
+	CUDA_CHECK_RETURN(cudaMemcpy(descriptor.data, desGpu.data, sizeof(unsigned char)*singleSize*size, cudaMemcpyDeviceToHost));
+
+	//descritpor.create((size, singleSize, CV_8U);
+}
+
 
 //todo:把BirskScaleSpace放入构造函数，改进数组分配，避免多次检测时不必要的数据分配
 
@@ -77,7 +86,10 @@ int main() {
 	cv::transpose(testImg,testRotate);
 
 	cv::Mat testImgGray;
-	cv::cvtColor(testRotate, testImgGray, CV_BGR2GRAY);
+	cv::cvtColor(testImg, testImgGray, CV_BGR2GRAY);
+
+	cv::Mat testImgGray1;
+	cv::cvtColor(testRotate, testImgGray1, CV_BGR2GRAY);
 	if (!testImg.data) {
 		cout << "load data failed" << endl;
 	}
@@ -85,11 +97,13 @@ int main() {
 	//cv::waitKey();
 
 	cv::cuda::GpuMat dstImage1;
+	cv::cuda::GpuMat dstImage2;
 	//ensureSizeIsEnough(cuda::FastFeatureDetector::ROWS_COUNT, 5000, CV_32FC1, _keypoints);
 	//ensureSizeIsEnough(dstSize.height, dstSize.width, CV_8UC1, dstImage1);
-	unsigned char * dstImagedata;
+	unsigned char * dstImagedata,*dstImagedata1;
 
 	cudaMalloc(&dstImagedata, testImgGray.rows * testImgGray.cols);
+	cudaMalloc(&dstImagedata1, testImgGray1.rows * testImgGray1.cols);
 
 	for (int i = 0; i < testImgGray.rows; i++) {
 		cudaMemcpy(dstImagedata + i * testImgGray.cols,
@@ -98,19 +112,38 @@ int main() {
 				cudaMemcpyHostToDevice);
 	}
 
+	for (int i = 0; i < testImgGray1.rows; i++) {
+		cudaMemcpy(dstImagedata1 + i * testImgGray1.cols,
+				testImgGray1.data + i * testImgGray1.step,
+				sizeof(unsigned char) * testImgGray1.cols,
+				cudaMemcpyHostToDevice);
+	}
+
 	dstImage1.data = dstImagedata;
 	dstImage1.cols = testImgGray.cols;
 	dstImage1.step = testImgGray.cols;
 	dstImage1.rows = testImgGray.rows;
 
+	dstImage2.data = dstImagedata1;
+	dstImage2.cols = testImgGray1.cols;
+	dstImage2.step = testImgGray1.cols;
+	dstImage2.rows = testImgGray1.rows;
+
 	cv::Mat retestCpu(testImgGray.rows, testImgGray.cols, CV_8UC1);
 	dstImage1.download(retestCpu);
 
+	cv::Mat retestCpu1(testImgGray1.rows, testImgGray1.cols, CV_8UC1);
+	dstImage2.download(retestCpu1);
+
 	cv::imshow("retestCpu", retestCpu);
+	cv::imshow("retestCpu1", retestCpu1);
 	cv::waitKey();
 //(int rows_, int cols_, T* data_, size_t step_)
 	PtrStepSzb imageIn(dstImage1.rows, dstImage1.cols, dstImage1.data,
 			dstImage1.step);
+
+	PtrStepSzb imageIn1(dstImage2.rows, dstImage2.cols, dstImage2.data,
+			dstImage2.step);
 
 
 	cout << "load image done!!" << endl;
@@ -119,24 +152,25 @@ int main() {
 	int2 size = a.detectAndCompute(imageIn, a.keypointsG, a.kpSizeG, a.kpScoreG,
 			false);
 
-
-	cv::Mat descriptors;
-	copyDescritpor( a.descriptorsG, descriptors, size.y, a.strings_ );
-
-
-
+	BRISK_Impl a1(dstImage2.rows, dstImage2.cols);
+	int2 size1 = a1.detectAndCompute(imageIn1, a1.keypointsG, a1.kpSizeG, a1.kpScoreG,
+				false);
 
 
 
 
 	cout << size.x << " " << size.y << endl;
-	poutfloat2(a.keypointsG, size.x, "keypointsG");
-	pouta(a.kpSizeG, size.x, "kpSizeG");
-	pouta(a.kpScoreG, size.x, "kpScoreG");
+	cout << size1.x << " " << size1.y << endl;
+	//poutfloat2(a.keypointsG, size.x, "keypointsG");
+	//pouta(a.kpSizeG, size.x, "kpSizeG");
+	//pouta(a.kpScoreG, size.x, "kpScoreG");
 
 	//display
 	vector<cv::KeyPoint> keypoints;
 	copyToKeyPoint(keypoints, size.x, a.keypointsG, a.kpSizeG, a.kpScoreG);
+
+	vector<cv::KeyPoint> keypoints1;
+	copyToKeyPoint(keypoints1, size1.x, a1.keypointsG, a1.kpSizeG, a1.kpScoreG);
 
 	cv::Mat result1;
 	int drawmode = cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS;
@@ -144,12 +178,50 @@ int main() {
 	cv::drawKeypoints(testImgGray, keypoints, result1, cv::Scalar::all(-1),
 			drawmode);
 
+	cv::Mat result2;
+	//fastDetector_->convert(fastKpRange, KpRange);
+	cv::drawKeypoints(testImgGray1, keypoints1, result2, cv::Scalar::all(-1),
+			drawmode);
+
 	cv::imshow("result1", result1);
+	cv::imshow("result2", result2);
 	cv::waitKey();
 
+
+
+
+
+
+	//match
+	cv::Mat descriptors;
+	copyDescritpor( a.descriptorsG, descriptors, size.y, a.strings_ );
+
+	cv::Mat descriptors1;
+	copyDescritpor( a1.descriptorsG, descriptors1, size1.y, a1.strings_ );
+
+	for( int i = 0; i < size.y; i++ )
+	{
+		cout << "descriptor " << i << " :\t";
+		for( int j = 0; j < a.strings_; j++ )
+		{
+			cout  << (int)(descriptors.at<unsigned char>(i,j))<<" ";
+		}
+		cout << endl;
+	}
+
+    cv::BFMatcher matcher(cv::NORM_HAMMING);
+    vector<cv::DMatch> matches;
+    matcher.match(descriptors, descriptors1, matches);
+
+    cv::Mat img_match;
+    cv::drawMatches(testImgGray, keypoints, testImgGray1, keypoints1, matches, img_match);
+    cout<<"number of matched points: "<<matches.size()<<endl;
+    cv::imshow("matches",img_match);
+    cv::waitKey(0);
+
+
+
+
 	cout << "end!!" << endl;
-
-
-	cout << "des size: " << a.strings_ << endl;
 	return 0;
 }

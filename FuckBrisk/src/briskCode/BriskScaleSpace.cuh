@@ -315,7 +315,7 @@ public:
 	float2* keypointsG;
 	float* kpSizeG;
 	float* kpScoreG;
-	int* _valuesG;             //采样点大小
+	int* _valuesG;             //todo: useless delete
 	PtrStepSzi _integralG;
 	PtrStepSzb descriptorsG;
 
@@ -2536,15 +2536,19 @@ __global__ void generateDesKernel(BRISK_Impl briskImpl, const int ksize,
 		return;
 	}
 
+	const unsigned int ind = atomicInc(&g_counter1, (unsigned int) (-1));
+
 	int t1;
 	int t2;
 
 	// the feature orientation
-	const unsigned char* ptr = briskImpl.descriptorsG.data;
+	const unsigned char* ptr = briskImpl.descriptorsG.data + ind* briskImpl.strings_;
 
 	float2 kp = keypoints[k];
 	const int& scale = briskImpl.kscalesG[k];
-	int* pvalues = briskImpl._valuesG;
+
+	int* valuesIn = new int[briskImpl.points_];//todo: if memset is necessary
+	int* pvalues = valuesIn;
 	const float& x = kp.x;
 	const float& y = kp.y;
 
@@ -2565,8 +2569,8 @@ __global__ void generateDesKernel(BRISK_Impl briskImpl, const int ksize,
 				+ briskImpl.noLongPairs_;
 		for (BRISK_Impl::BriskLongPair* iter = briskImpl.longPairs_; iter < max;
 				++iter) {
-			t1 = *(briskImpl._valuesG + iter->i);
-			t2 = *(briskImpl._valuesG + iter->j);
+			t1 = *(valuesIn + iter->i);
+			t2 = *(valuesIn + iter->j);
 			const int delta_t = (t1 - t2);
 			// update the direction:
 			const int tmp0 = delta_t * (iter->weighted_dx) / 1024;
@@ -2607,7 +2611,7 @@ __global__ void generateDesKernel(BRISK_Impl briskImpl, const int ksize,
 	int shifter = 0;
 
 	//unsigned int mean=0;
-	pvalues = briskImpl._valuesG;
+	pvalues = valuesIn;
 	// get the gray values in the rotated pattern
 	for (unsigned int i = 0; i < briskImpl.points_; i++) {
 		*(pvalues++) = smoothedIntensity(briskImpl, _image,
@@ -2621,8 +2625,8 @@ __global__ void generateDesKernel(BRISK_Impl briskImpl, const int ksize,
 			+ briskImpl.noShortPairs_;
 	for (BRISK_Impl::BriskShortPair* iter = briskImpl.shortPairs_; iter < max;
 			++iter) {
-		t1 = *(briskImpl._valuesG + iter->i);
-		t2 = *(briskImpl._valuesG + iter->j);
+		t1 = *(valuesIn + iter->i);
+		t2 = *(valuesIn + iter->j);
 		if (t1 > t2) {
 			*ptr2 |= ((1) << shifter);
 
@@ -2635,7 +2639,7 @@ __global__ void generateDesKernel(BRISK_Impl briskImpl, const int ksize,
 		}
 	}
 
-	ptr += briskImpl.strings_;
+	//ptr += briskImpl.strings_;
 
 }
 
@@ -2697,7 +2701,7 @@ int2 BRISK_Impl::computeDescriptorsAndOrOrientation(PtrStepSzb _image,
 	int temp;
 	CUDA_CHECK_RETURN(
 			cudaMemcpyAsync(&temp, counter_ptr, sizeof(unsigned int),
-					cudaMemcpyDeviceToHost)); //todo: cudaSafeCall
+					cudaMemcpyDeviceToHost)); //todo: change to no-async?
 
 	CUDA_CHECK_RETURN(cudaStreamSynchronize(NULL)); //todo: cudaSafeCall
 
@@ -2720,6 +2724,8 @@ int2 BRISK_Impl::computeDescriptorsAndOrOrientation(PtrStepSzb _image,
 	 }*/
 
 
+	//todo: if speed not allowed, delete
+	CUDA_CHECK_RETURN(cudaMemsetAsync(counter_ptr, 0, sizeof(unsigned int)));
 
 	// now do the extraction for all keypoints:
 	//__global__ void generateDesKernel( BRISK_Impl briskImpl, const int ksize,  float2* keypoints, float* kpSize, float* kpScore, PtrStepSzb _image, bool doDescriptors, bool doOrientation,
@@ -2982,7 +2988,7 @@ BRISK_Impl::BRISK_Impl(int rows, int cols, int thresh, int octaves_in,
 	generateKernel(rList, nList, 5, (float) (5.85 * patternScale),
 			(float) (8.2 * patternScale));
 
-	newArray(_valuesG, points_, 1);
+	newArray(_valuesG, points_, 1);//todo: useless delete
 	newArray(keypointsG, maxPointNow, 1);
 	newArray(kscalesG, maxPointNow, 1);
 
