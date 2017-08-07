@@ -76,7 +76,7 @@ void copyDescritporDebug( PtrStepSzb desGpu, cv::Mat& descriptor, int size, int 
 
 
 int main() {
-	cv::Mat testImg = cv::imread("data/test1.jpg");
+	cv::Mat testImg = cv::imread("data/test2.jpg");
 
 	cv::Mat testResize;
 	testResize.create(testImg.rows / 2, testImg.cols / 2, CV_8U);
@@ -199,7 +199,7 @@ int main() {
 	cv::Mat descriptors1;
 	copyDescritpor( a1.descriptorsG, descriptors1, size1.y, a1.strings_ );
 
-	for( int i = 0; i < size.y; i++ )
+/*	for( int i = 0; i < size.y; i++ )
 	{
 		cout << "descriptor " << i << " :\t";
 		for( int j = 0; j < a.strings_; j++ )
@@ -207,11 +207,51 @@ int main() {
 			cout  << (int)(descriptors.at<unsigned char>(i,j))<<" ";
 		}
 		cout << endl;
-	}
+	}*/
 
     cv::BFMatcher matcher(cv::NORM_HAMMING);
     vector<cv::DMatch> matches;
     matcher.match(descriptors, descriptors1, matches);
+
+
+    int tempcount = 0;
+    for( int i = 0; i < size.y; i ++ )
+    {
+    	if( keypoints[i].pt.x == -1 || keypoints[i].pt.y == -1 )
+    	{
+    		keypoints.erase(keypoints.begin() + i);
+
+    		cout << "in delete keypoints: " << i << " " << ++ tempcount << " points deleted" << endl;
+
+    		if(tempcount > size.y)
+    		{
+    			exit(1);
+    		}
+
+    	    i --;
+    	}
+    }
+
+    tempcount = 0;
+
+    for( int i = 0; i < size1.y; i ++ )
+    {
+    	if( keypoints1[i].pt.x == -1 || keypoints1[i].pt.y == -1 )
+    	{
+    		keypoints1.erase(keypoints1.begin() + i);
+
+    		cout << "in delete keypoints1: " << i << " " << ++ tempcount << " points deleted" << endl;
+
+    		if(tempcount > size1.y)
+    		{
+    			exit(1);
+    		}
+
+    		i --;
+    	}
+    }
+
+    cout << keypoints.size() << " " << keypoints1.size() << endl;
 
     cv::Mat img_match;
     cv::drawMatches(testImgGray, keypoints, testImgGray1, keypoints1, matches, img_match);
