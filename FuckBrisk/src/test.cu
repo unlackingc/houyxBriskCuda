@@ -83,8 +83,8 @@ int main() {
 		cout << "load data failed" << endl;
 	}
 
-/*	cv::Mat testImg11 = cv::imread("data/test1.jpg");
-	cv::Mat testResize;
+	cv::Mat testImg11 = cv::imread("data/test1.jpg");
+/*	cv::Mat testResize;
 	testResize.create(testImg.rows / 2, testImg.cols / 2, CV_8U);
 	cv::resize(testImg,testResize,testResize.size(),0,0,cv::INTER_AREA);*/
 
@@ -100,7 +100,7 @@ int main() {
 	cv::Mat testImgGray;
 	cv::cvtColor(testImg, testImgGray, CV_BGR2GRAY);
 	cv::Mat testImgGray1;
-	cv::cvtColor(testRotate, testImgGray1, CV_BGR2GRAY);
+	cv::cvtColor(testImg11, testImgGray1, CV_BGR2GRAY);
 
 
 
@@ -153,8 +153,18 @@ int main() {
 
 	//brisk计算特征点
 	BRISK_Impl a(true,dstImage.rows, dstImage.cols);
-	int2 size = a.detectAndCompute(imageIn, a.keypointsG, a.kpSizeG, a.kpScoreG,a.descriptorsG,
-			false);
+
+	int2 size;
+	for( int i = 0; i < 1; i ++ )
+	{
+		//size = a.detectAndCompute(imageIn, a.keypointsG, a.kpSizeG, a.kpScoreG,a.descriptorsG,false);
+
+		cout << "caled: " << i << endl;
+	}
+	size = a.detectAndCompute(imageIn, a.keypointsG, a.kpSizeG, a.kpScoreG,a.descriptorsG,
+		false);
+	cout << "a finished" << endl;
+	size = a.detectAndCompute(imageIn1, a.keypointsG, a.kpSizeG, a.kpScoreG,a.descriptorsG, false);
 
 	BRISK_Impl a1(true,dstImage1.rows, dstImage1.cols);
 	int2 size1 = a1.detectAndCompute(imageIn1, a1.keypointsG, a1.kpSizeG, a1.kpScoreG,a1.descriptorsG,

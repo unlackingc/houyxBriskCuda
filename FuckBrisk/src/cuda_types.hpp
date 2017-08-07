@@ -65,7 +65,7 @@ template<typename T> __host__  T * newArray( T *& ptr, int size, bool ifset )
 	CUDA_CHECK_RETURN( cudaMalloc((void**)&ptr, sizeof(T) * size));
 	if( ifset )
 	{
-		CUDA_CHECK_RETURN(cudaMemset ( ptr, 0, sizeof(T)*size ));
+		CUDA_CHECK_RETURN(cudaMemset( ptr, 0, sizeof(T)*size ));
 	}
 
 	return ptr;

@@ -23,7 +23,7 @@ public:
 	~BriskLayerOne() {
 
 		if (ptrcount == 0 && hasFuckReset) {
-
+			//cout << "got me in ~BriskLayerOne" << endl;
 			CUDA_CHECK_RETURN(cudaFree(this->scores_.data));
 			if (!saveTheOriginImage) {
 				CUDA_CHECK_RETURN(cudaFree(this->img_.data));
@@ -125,6 +125,7 @@ public:
 	BriskScaleSpace(int _octaves = 3);
 	~BriskScaleSpace() {
 		if (ptrcount == 0) {
+			//cout << "got me in ~BriskLayerOne" << endl;
 			CUDA_CHECK_RETURN(cudaFree(scoreTemp));
 			for (int i = 0; i < layerExpected; i++) {
 
@@ -350,26 +351,48 @@ void BriskLayerOne::FuckReset(bool isFisrtTime, const PtrStepSzb& img_in,
  */
 void BriskLayerOne::FuckReset(bool isFisrtTime, const BriskLayerOne& layer,
 		int mode) {
+
+
+
 	hasFuckReset = true;
 	ptrcount = 0;
 	agast = Agast(
 			(mode == CommonParams::HALFSAMPLE) ?
 					layer.img().cols / 2 : 2 * (layer.img().cols / 3));
+
 	if (mode == CommonParams::HALFSAMPLE) {
 
-		unsigned char* imgData;
-		img_ = PtrStepSzb(layer.img().rows / 2, layer.img().cols / 2, imgData,
-				layer.img().cols / 2);
+		if(isFisrtTime)
+		{
+			unsigned char* imgData;
+			img_ = PtrStepSzb(layer.img().rows / 2, layer.img().cols / 2, imgData,
+					layer.img().cols / 2);
+		}
+		else
+		{
+			img_ = PtrStepSzb(layer.img().rows / 2, layer.img().cols / 2, img_.data,
+								layer.img().cols / 2);
+		}
+
 		halfsample(isFisrtTime, layer.img(), img_);
 
 		scale_ = layer.scale() * 2;
 		offset_ = 0.5f * scale_ - 0.5f;
 	} else {
 
-		unsigned char* imgData;
-		img_ = PtrStepSzb(2 * (layer.img().rows / 3),
-				2 * (layer.img().cols / 3), imgData,
-				2 * (layer.img().cols / 3));
+		if(isFisrtTime)
+		{
+			unsigned char* imgData;
+			img_ = PtrStepSzb(2 * (layer.img().rows / 3),
+					2 * (layer.img().cols / 3), imgData,
+					2 * (layer.img().cols / 3));
+		}
+		else
+		{
+			img_ = PtrStepSzb(2 * (layer.img().rows / 3),
+								2 * (layer.img().cols / 3), img_.data,
+								2 * (layer.img().cols / 3));
+		}
 
 		twothirdsample(isFisrtTime, layer.img(), img_);
 		scale_ = layer.scale() * 1.5f;
@@ -694,6 +717,7 @@ void BriskScaleSpace::constructPyramid(PtrStepSzb& image, bool isFisrtTime) {
 
 	const int octaves2 = layers_;
 	pyramid_[0].FuckReset(isFisrtTime, image);
+
 	pyramid_[1].FuckReset(isFisrtTime, pyramid_[0],
 			BriskLayerOne::CommonParams::TWOTHIRDSAMPLE);
 
@@ -702,7 +726,6 @@ void BriskScaleSpace::constructPyramid(PtrStepSzb& image, bool isFisrtTime) {
 				BriskLayerOne::CommonParams::HALFSAMPLE);
 		pyramid_[i + 1].FuckReset(isFisrtTime, pyramid_[i - 1],
 				BriskLayerOne::CommonParams::HALFSAMPLE);
-		;
 	}
 }
 
@@ -719,7 +742,9 @@ int BriskScaleSpace::getKeypoints(const int threshold_, float2* keypoints,
 	int safeThreshold_ = (int) (threshold_ * safetyFactor_);
 
 	for (int i = 0; i < layers_; i++) {
+
 		BriskLayerOne& l = pyramid_[i];
+
 		kpsCount[i] = l.getAgastPoints(safeThreshold_, kpsLoc[i], scoreTemp); //todo: 并行化
 		maxLayersPoints =
 				kpsCount[i] > maxLayersPoints ? kpsCount[i] : maxLayersPoints;
@@ -1968,7 +1993,10 @@ __global__ void refineKernel2(BriskScaleSpace space, float2* keypoints,
 int BRISK_Impl::computeKeypointsNoOrientation(PtrStepSzb& _image,
 		float2* keypoints, float* kpSize, float* kpScore) {
 
+
+
 	if (isFirstTime) {
+
 		briskScaleSpace.constructPyramid(_image, true);
 		isFirstTime = false;
 	} else {

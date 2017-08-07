@@ -271,21 +271,12 @@ __inline__ int calcKeypoints_gpu(PtrStepSzb img, PtrStepSzb mask, short2* kpLoc,
         else
             calcKeypoints<false><<<grid, block>>>(img, WithOutMask(), kpLoc, maxKeypoints, score, threshold);
     }
-    CUDA_CHECK_RETURN(cudaGetLastError());
 
     unsigned int count = 0;
 
     CUDA_CHECK_RETURN(cudaMemcpy(&count, counter_ptr, sizeof(unsigned int), cudaMemcpyDeviceToHost));
 
     return count;
-}
-
-int InterfaceGetKeyPoints( int rows, int cols, int steps, unsigned char* image, short2* keyPoints, int* scores, int threshold, int maxPoints )
-{
-	PtrStepSzb image_( rows, cols, image, steps);
-	PtrStepSzb mask( rows, cols, NULL, steps);
-	PtrStepSzi scores_( rows, cols, scores, steps);
-	return calcKeypoints_gpu(image_, mask, keyPoints, maxPoints, scores_, threshold, NULL );
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -327,8 +318,6 @@ __global__ void nonmaxSuppression(const short2* kpLoc, int count, const PtrStepS
 
 __inline__ int nonmaxSuppression_gpu(const short2* kpLoc, int count, PtrStepSzi score, short2* loc, float* response, cudaStream_t stream)
 {
-
-    CUDA_CHECK_RETURN(cudaGetLastError());//debug
     void* counter_ptr;
     CUDA_CHECK_RETURN(cudaGetSymbolAddress(&counter_ptr, g_counter));//todo: cudaSafeCall
 
@@ -359,7 +348,6 @@ int interfaceNoMaxSup(int rows, int cols, int steps, const short2* keypoints, in
 
 int detectMe1( PtrStepSzb image, short2* keyPoints, PtrStepSzi scores, short2* loc, float* response,int threshold, int maxPoints,  bool ifNoMaxSup)
 {
-
     PtrStepSzb mask( image.rows, image.cols, NULL, image.step);
 
     int count = calcKeypoints_gpu(image, mask, keyPoints, maxPoints, scores, threshold, NULL );
@@ -372,8 +360,6 @@ int detectMe1( PtrStepSzb image, short2* keyPoints, PtrStepSzi scores, short2* l
         exit(1);
     }
 
-
-    CUDA_CHECK_RETURN(cudaGetLastError());//debug
 
     if (ifNoMaxSup)
     {
