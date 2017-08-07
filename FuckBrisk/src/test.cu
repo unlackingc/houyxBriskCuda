@@ -72,11 +72,12 @@ void copyDescritporDebug( PtrStepSzb desGpu, cv::Mat& descriptor, int size, int 
 }
 
 
-//todo:把BirskScaleSpace放入构造函数，改进数组分配，避免多次检测时不必要的数据分配
+//todo:需要记住每次构造后要检测的图像的step必须相同
 
 
 int main() {
 	cv::Mat testImg = cv::imread("data/test2.jpg");
+	cv::Mat testImg11 = cv::imread("data/test1.jpg");
 
 	cv::Mat testResize;
 	testResize.create(testImg.rows / 2, testImg.cols / 2, CV_8U);
@@ -89,7 +90,7 @@ int main() {
 	cv::cvtColor(testImg, testImgGray, CV_BGR2GRAY);
 
 	cv::Mat testImgGray1;
-	cv::cvtColor(testRotate, testImgGray1, CV_BGR2GRAY);
+	cv::cvtColor(testImg11, testImgGray1, CV_BGR2GRAY);
 	if (!testImg.data) {
 		cout << "load data failed" << endl;
 	}
@@ -221,7 +222,7 @@ int main() {
     	{
     		keypoints.erase(keypoints.begin() + i);
 
-    		cout << "in delete keypoints: " << i << " " << ++ tempcount << " points deleted" << endl;
+    		//cout << "in delete keypoints: " << i << " " << ++ tempcount << " points deleted" << endl;
 
     		if(tempcount > size.y)
     		{
@@ -240,7 +241,7 @@ int main() {
     	{
     		keypoints1.erase(keypoints1.begin() + i);
 
-    		cout << "in delete keypoints1: " << i << " " << ++ tempcount << " points deleted" << endl;
+    		//cout << "in delete keypoints1: " << i << " " << ++ tempcount << " points deleted" << endl;
 
     		if(tempcount > size1.y)
     		{
