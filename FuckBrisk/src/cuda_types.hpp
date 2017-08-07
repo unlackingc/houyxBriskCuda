@@ -46,12 +46,6 @@ static void CheckCudaErrorAux (const char *file, unsigned line, const char *stat
 
 template<typename T> __CV_CUDA_HOST_DEVICE__  T * newArrayIn( T *& ptr, int size, bool ifset )
 {
-/*	CUDA_CHECK_RETURN( cudaMalloc((void**)&ptr, sizeof(T) * size));
-	if( ifset )
-	{
-		CUDA_CHECK_RETURN(cudaMemset ( ptr, 0, sizeof(T)*size ));
-	}*/
-
 	ptr = new T[size];
 
 	if( ifset )
@@ -130,7 +124,6 @@ public:
 	__CV_CUDA_HOST_DEVICE__ const T& operator ()(int y, int x) const { return ptr(y)[x]; }
 	__CV_CUDA_HOST_DEVICE__       T* at(int y, int x)     { return (      T*)( DevPtr<T>::data + y * step + x); }
 	__CV_CUDA_HOST_DEVICE__ const T* at(int y, int x)const{ return (const T*)( DevPtr<T>::data + y * step + x); }
-	//__CV_CUDA_HOST_DEVICE__       T* at(int y, int x)const{ return (const T*)( DevPtr<T>::data + y * step + x); }
 };
 
 template <typename T> struct PtrStepSz : public PtrStep<T>
@@ -207,19 +200,5 @@ template<typename T> void pouta( T* m, int size,std::string info )
 	}
 	std::cout << "******************finish*******************" << std::endl;
 }
-
-/*void poutfloat2( float2* m, int size,std::string info )
-{
-	float2 temp;
-	memset(&temp,0,sizeof(float2));
-	std::cout << info << std::endl;
-	for( int i = 0; i < size; i++  )
-	{
-		CUDA_CHECK_RETURN(cudaMemcpy(&temp, &m[i], sizeof(float2), cudaMemcpyDeviceToHost));
-		std::cout << "===="<< info <<"====(" << temp.x << "," << temp.y << ")";
-		std::cout << std::endl;
-	}
-	std::cout << "******************finish*******************" << std::endl;
-}*/
 
 #endif /* CUDA_TYPES_HPP_ */

@@ -1977,11 +1977,8 @@ int BRISK_Impl::computeKeypointsNoOrientation(PtrStepSzb& _image,
 		briskScaleSpace.constructPyramid(_image, false);
 	}
 
-	//int ret = 0;
 	return briskScaleSpace.getKeypoints(threshold, keypoints, kpSize, kpScore);
 
-	// remove invalid points
-	//KeyPointsFilter::runByPixelsMask(keypoints, mask);
 }
 
 //todo: 更正
