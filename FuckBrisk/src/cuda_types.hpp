@@ -202,6 +202,7 @@ template<typename T> void pouta( T* m, int size,std::string info )
 	std::cout << info << std::endl;
 	for( int i = 0; i < size; i++  )
 	{
+		std::cout << i << " : ";
 		pout( &m[i], info );
 	}
 	std::cout << "******************finish*******************" << std::endl;
