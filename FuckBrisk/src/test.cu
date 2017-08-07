@@ -47,9 +47,24 @@ void copyToKeyPoint(vector<cv::KeyPoint>& keypoints1, int size,
 		CUDA_CHECK_RETURN(cudaMemcpy(&kpscoretemp, &kpScore[i], sizeof(float), cudaMemcpyDeviceToHost));
 		keypoints1.push_back(cv::KeyPoint(float(kptemp.x), float(kptemp.y), kpsizetemp, -1, kpscoretemp, 0));
 	}
-
-
 }
+
+void copyDescritpor( PtrStepSzb desGpu, cv::Mat& descriptor, int size, int singleSize )
+{
+	descriptor.create(size,singleSize,CV_8U);
+
+
+
+	for( int i = 0; i < size; i++ )
+	{
+		CUDA_CHECK_RETURN(cudaMemcpy(descriptor.ptr<unsigned char>(i), &(desGpu.data[i*singleSize]), sizeof(unsigned char)*singleSize, cudaMemcpyDeviceToHost));
+	}
+	//descritpor.create((size, singleSize, CV_8U);
+}
+
+
+//todo:把BirskScaleSpace放入构造函数，改进数组分配，避免多次检测时不必要的数据分配
+
 
 int main() {
 	cv::Mat testImg = cv::imread("data/test1.jpg");
@@ -58,8 +73,11 @@ int main() {
 	testResize.create(testImg.rows / 2, testImg.cols / 2, CV_8U);
 	cv::resize(testImg,testResize,testResize.size(),0,0,cv::INTER_AREA);
 
+	cv::Mat testRotate;
+	cv::transpose(testImg,testRotate);
+
 	cv::Mat testImgGray;
-	cv::cvtColor(testImg, testImgGray, CV_BGR2GRAY);
+	cv::cvtColor(testRotate, testImgGray, CV_BGR2GRAY);
 	if (!testImg.data) {
 		cout << "load data failed" << endl;
 	}
@@ -98,11 +116,12 @@ int main() {
 	cout << "load image done!!" << endl;
 
 	BRISK_Impl a(dstImage1.rows, dstImage1.cols);
-	int size = a.detectAndCompute(imageIn, a.keypointsG, a.kpSizeG, a.kpScoreG,
+	int2 size = a.detectAndCompute(imageIn, a.keypointsG, a.kpSizeG, a.kpScoreG,
 			false);
-	//int size = a.detectAndCompute(imageIn, _keypoints.ptr<float2>(cv::cuda::FastFeatureDetector::LOCATION_ROW), a.kpSizeG, _keypoints.ptr<float>(cv::cuda::FastFeatureDetector::RESPONSE_ROW), false);
-	//float2 kptemp;
-    //CUDA_CHECK_RETURN(cudaMemcpy(&kptemp, &(a.keypointsG[0]), sizeof(float2), cudaMemcpyDeviceToHost));
+
+
+	cv::Mat descriptors;
+	copyDescritpor( a.descriptorsG, descriptors, size.y, a.strings_ );
 
 
 
@@ -110,15 +129,14 @@ int main() {
 
 
 
-
-	cout << size << endl;
-	poutfloat2(a.keypointsG, size, "keypointsG");
-	pouta(a.kpSizeG, size, "kpSizeG");
-	pouta(a.kpScoreG, size, "kpScoreG");
+	cout << size.x << " " << size.y << endl;
+	poutfloat2(a.keypointsG, size.x, "keypointsG");
+	pouta(a.kpSizeG, size.x, "kpSizeG");
+	pouta(a.kpScoreG, size.x, "kpScoreG");
 
 	//display
 	vector<cv::KeyPoint> keypoints;
-	copyToKeyPoint(keypoints, size, a.keypointsG, a.kpSizeG, a.kpScoreG);
+	copyToKeyPoint(keypoints, size.x, a.keypointsG, a.kpSizeG, a.kpScoreG);
 
 	cv::Mat result1;
 	int drawmode = cv::DrawMatchesFlags::DRAW_RICH_KEYPOINTS;

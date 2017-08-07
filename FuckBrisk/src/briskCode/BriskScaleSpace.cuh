@@ -248,7 +248,7 @@ public:
 	void generateKernel(const float* radiusList, const int* numberList,
 			const int ListSize, float dMax, float dMin);
 
-	int detectAndCompute(PtrStepSzb _image, float2* keypoints, float* kpSize,
+	int2 detectAndCompute(PtrStepSzb _image, float2* keypoints, float* kpSize,
 			float* kpScore, bool useProvidedKeypoints);
 	/*    void detectAndCompute( InputArray image, InputArray mask,
 	 CV_OUT std::vector<KeyPoint>& keypoints,
@@ -257,7 +257,7 @@ public:
 
 	int computeKeypointsNoOrientation(PtrStepSzb& _image, float2* keypoints,
 			float* kpSize, float* kpScore);
-	int computeDescriptorsAndOrOrientation(PtrStepSzb _image, float2* keypoints,
+	int2 computeDescriptorsAndOrOrientation(PtrStepSzb _image, float2* keypoints,
 			float* kpSize, float* kpScore, bool doDescriptors,
 			bool doOrientation, bool useProvidedKeypoints);
 	/*
@@ -2661,7 +2661,7 @@ void integral(PtrStepSzb _image, PtrStepSzi ret) {
  * @param doOrientation
  * @param useProvidedKeypoints
  */
-int BRISK_Impl::computeDescriptorsAndOrOrientation(PtrStepSzb _image,
+int2 BRISK_Impl::computeDescriptorsAndOrOrientation(PtrStepSzb _image,
 		float2* keypoints, float* kpSize, float* kpScore, bool doDescriptors,
 		bool doOrientation, bool useProvidedKeypoints) {
 	/* Mat image = _image.getMat(), mask = _mask.getMat();
@@ -2734,11 +2734,11 @@ int BRISK_Impl::computeDescriptorsAndOrOrientation(PtrStepSzb _image,
 	CUDA_CHECK_RETURN(cudaGetLastError());
 	// clean-up
 	//delete[] _values;
-	return ksize; //debug
+	return make_int2(ksize,ksize-temp); //debug
 	//return ksize-temp;
 }
 
-int BRISK_Impl::detectAndCompute(PtrStepSzb _image, float2* keypoints,
+int2 BRISK_Impl::detectAndCompute(PtrStepSzb _image, float2* keypoints,
 		float* kpSize, float* kpScore, bool useProvidedKeypoints) {
 	bool doOrientation = true;
 
@@ -2897,8 +2897,6 @@ void BRISK_Impl::generateKernel(const float* radiusList, const int* numberList,
 	//free(indexChange);
 
 	//CUDA_CHECK_RETURN(cudaDeviceSynchronize());
-
-	int temptest = 10;
 
 	/*  CUDA_CHECK_RETURN(cudaMalloc((void**)&temptestInner, sizeof(int)));
 	 CUDA_CHECK_RETURN(cudaMemcpy(temptestInner,&temptest,sizeof(int),cudaMemcpyHostToDevice));*/
