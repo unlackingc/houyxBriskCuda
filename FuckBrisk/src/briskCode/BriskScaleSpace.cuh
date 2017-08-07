@@ -2296,49 +2296,7 @@ __global__ void deleteBorderkernel(BRISK_Impl briskImpl, const int ksize,
 		float2* keypoints, float* kpSize, float* kpScore, PtrStepSzb _image) {
 	const int k = threadIdx.x + blockIdx.x * blockDim.x;
 
-	if (k >= ksize) {
-		return;
-	}
 
-	const float log2 = 0.693147180559945f;
-	const float lb_scalerange = (float) (log(BRISK_Impl::scalerange_) / (log2));
-	//std::vector<cv::KeyPoint>::iterator beginning = keypoints.begin();
-	//std::vector<int>::iterator beginningkscales = kscales.begin();
-	const float basicSize06 = briskImpl.basicSize_ * 0.6f;
-
-	//算的真辛苦，只不过是把采样点超出图像的keypoint删除了
-	//todo : 无法理解为啥scale_=64
-	unsigned int scale;
-	/*	  for (size_t k = 0; k < ksize; k++)
-	 {*/
-
-	scale = max(
-			(int) (briskImpl.scales_ / lb_scalerange
-					* (log(kpSize[k] / (basicSize06)) / log2) + 0.5), 0);
-	// saturate
-	if (scale >= briskImpl.scales_)
-		scale = briskImpl.scales_ - 1;
-	briskImpl.kscalesG[k] = scale;
-	const int border = briskImpl.sizeList_[scale];
-	const int border_x = _image.cols - border;
-	const int border_y = _image.rows - border;
-	if (RoiPredicate((float) border, (float) border, (float) border_x,
-			(float) border_y, keypoints[k])) {
-		keypoints[k] = make_float2(-1, -1);
-		briskImpl.kscalesG[k] = -1;	  //mark as bad.
-
-		const unsigned int ind = atomicInc(&g_counter1, (unsigned int) (-1));
-
-		/*	      keypoints.erase(beginning + k);
-		 kscales.erase(beginningkscales + k);
-		 if (k == 0)
-		 {
-		 keypoints[k] =
-		 beginningkscales = kscales.begin();
-		 }*/
-		//ksize--;
-		//k--;
-	}
 	/*}*/
 }
 
@@ -2530,22 +2488,56 @@ __global__ void generateDesKernel(BRISK_Impl briskImpl, const int ksize,
 	//cout << 1 << endl;
 	const int k = threadIdx.x + blockIdx.x * blockDim.x;
 	float angle = 0;
+	unsigned int ind = 0;
+	unsigned char* ptr;
 
-	if (k >= ksize || keypoints[k].x == -1 || keypoints[k].y == -1
-			|| briskImpl.kscalesG[k] == -1) {
+	if (k >= ksize) {
 		return;
 	}
 
-	const unsigned int ind = atomicInc(&g_counter1, (unsigned int) (-1));
+	const float log2 = 0.693147180559945f;
+	const float lb_scalerange = (float) (log(BRISK_Impl::scalerange_) / (log2));
+	//std::vector<cv::KeyPoint>::iterator beginning = keypoints.begin();
+	//std::vector<int>::iterator beginningkscales = kscales.begin();
+	const float basicSize06 = briskImpl.basicSize_ * 0.6f;
+
+	//算的真辛苦，只不过是把采样点超出图像的keypoint删除了
+	//todo : 无法理解为啥scale_=64
+	unsigned int scale;
+	/*	  for (size_t k = 0; k < ksize; k++)
+	 {*/
+
+	scale = max(
+			(int) (briskImpl.scales_ / lb_scalerange
+					* (log(kpSize[k] / (basicSize06)) / log2) + 0.5), 0);
+	// saturate
+	if (scale >= briskImpl.scales_)
+		scale = briskImpl.scales_ - 1;
+	briskImpl.kscalesG[k] = scale;
+	const int border = briskImpl.sizeList_[scale];
+	const int border_x = _image.cols - border;
+	const int border_y = _image.rows - border;
+	if (RoiPredicate((float) border, (float) border, (float) border_x,
+			(float) border_y, keypoints[k])) {
+		keypoints[k] = make_float2(-1, -1);
+		briskImpl.kscalesG[k] = -1;	  //mark as bad.
+
+		return;
+	}
+	else
+	{
+		ind = atomicInc(&g_counter1, (unsigned int) (-1));
+		ptr = briskImpl.descriptorsG.data + (ind) * briskImpl.strings_;
+	}
 
 	int t1;
 	int t2;
 
 	// the feature orientation
-	const unsigned char* ptr = briskImpl.descriptorsG.data + ind* briskImpl.strings_;
+	//const  = briskImpl.descriptorsG.data + (k) * briskImpl.strings_;
 
 	float2 kp = keypoints[k];
-	const int& scale = briskImpl.kscalesG[k];
+	const int& scale1 = briskImpl.kscalesG[k];
 
 	int* valuesIn = new int[briskImpl.points_];//todo: if memset is necessary
 	int* pvalues = valuesIn;
@@ -2558,7 +2550,7 @@ __global__ void generateDesKernel(BRISK_Impl briskImpl, const int ksize,
 		// get the gray values in the unrotated pattern
 		for (unsigned int i = 0; i < briskImpl.points_; i++) {
 			*(pvalues++) = smoothedIntensity(briskImpl, _image,
-					briskImpl._integralG, x, y, scale, 0, i);
+					briskImpl._integralG, x, y, scale1, 0, i);
 		}
 		//return;
 		//计算梯度方向
@@ -2615,7 +2607,7 @@ __global__ void generateDesKernel(BRISK_Impl briskImpl, const int ksize,
 	// get the gray values in the rotated pattern
 	for (unsigned int i = 0; i < briskImpl.points_; i++) {
 		*(pvalues++) = smoothedIntensity(briskImpl, _image,
-				briskImpl._integralG, x, y, scale, theta, i);
+				briskImpl._integralG, x, y, scale1, theta, i);
 	}
 
 	//最终计算灰度
@@ -2680,7 +2672,9 @@ int2 BRISK_Impl::computeDescriptorsAndOrOrientation(PtrStepSzb _image,
 		keyPointsCount = computeKeypointsNoOrientation(_image, keypoints,
 				kpSize, kpScore);
 	}
+	integral(_image, _integralG);
 
+	//cleanArray(descriptorsG.data, maxPointNow * strings_);
 
 	//Remove keypoints very close to the border
 	int ksize = keyPointsCount;
@@ -2694,39 +2688,8 @@ int2 BRISK_Impl::computeDescriptorsAndOrOrientation(PtrStepSzb _image,
 
 	// deleteBorderkernel( BRISK_Impl briskImpl, const int ksize,  float2* keypoints, float* kpSize, float* kpScore, PtrStepSzb _image )
 
-	deleteBorderkernel<<<ksize / 32 + 1, 32>>>(*this, ksize, keypoints, kpSize,
-			kpScore, _image);
-
-	CUDA_CHECK_RETURN(cudaGetLastError()); //todo: cudaSafeCall
-	int temp;
-	CUDA_CHECK_RETURN(
-			cudaMemcpyAsync(&temp, counter_ptr, sizeof(unsigned int),
-					cudaMemcpyDeviceToHost)); //todo: change to no-async?
-
-	CUDA_CHECK_RETURN(cudaStreamSynchronize(NULL)); //todo: cudaSafeCall
-
-	// first, calculate the integral image over the whole image:
-	// current integral image
-	/* Mat _integral; // the integral image*/
-	integral(_image, _integralG);
-
-	//int* _values = new int[points_]; // for temporary use
-
-	// resize the descriptors:
-	//cv::Mat descriptors;
-	cleanArray(descriptorsG.data, maxPointNow * strings_);
-
-	/*  if (doDescriptors)
-	 {
-	 _descriptors.create((int)ksize, strings_, CV_8U);
-	 descriptors = _descriptors.getMat();
-	 descriptors.setTo(0);
-	 }*/
-
-
-	//todo: if speed not allowed, delete
-	CUDA_CHECK_RETURN(cudaMemsetAsync(counter_ptr, 0, sizeof(unsigned int)));
-
+/*	deleteBorderkernel<<<ksize / 32 + 1, 32>>>(*this, ksize, keypoints, kpSize,
+			kpScore, _image);*/
 	// now do the extraction for all keypoints:
 	//__global__ void generateDesKernel( BRISK_Impl briskImpl, const int ksize,  float2* keypoints, float* kpSize, float* kpScore, PtrStepSzb _image, bool doDescriptors, bool doOrientation,
 
@@ -2736,11 +2699,16 @@ int2 BRISK_Impl::computeDescriptorsAndOrOrientation(PtrStepSzb _image,
 			useProvidedKeypoints);
 
 
-
 	CUDA_CHECK_RETURN(cudaGetLastError());
+	int temp;
+	CUDA_CHECK_RETURN(
+			cudaMemcpyAsync(&temp, counter_ptr, sizeof(unsigned int),
+					cudaMemcpyDeviceToHost)); //todo: change to no-async?
+
+	CUDA_CHECK_RETURN(cudaStreamSynchronize(NULL));
 	// clean-up
 	//delete[] _values;
-	return make_int2(ksize,ksize-temp); //debug
+	return make_int2(ksize,temp); //debug
 	//return ksize-temp;
 }
 

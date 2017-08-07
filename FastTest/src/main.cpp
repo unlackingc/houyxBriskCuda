@@ -62,7 +62,7 @@ void outputGpuMat( InputArray _image, uchar* dgpu, int rows, int cols )
 
 int main()
 {
-	Mat testImg = imread( "data/test1.jpg" );
+	Mat testImg = imread( "data/test2.jpg" );
 	Mat testImgGray;
 	cv::cvtColor(testImg, testImgGray, CV_BGR2GRAY);
 	if( !testImg.data )
