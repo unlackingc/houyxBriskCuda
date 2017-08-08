@@ -77,6 +77,13 @@ void copyDescritporDebug( PtrStepSzb desGpu, cv::Mat& descriptor, int size, int 
 
 int main() {
 
+	//openmptest
+	#pragma omp parallel for num_threads(10)
+	for( int i = 0; i < 10; i++ )
+	{
+		cout << i << endl;
+	}
+
 	//读取图片
 	cv::Mat testImg = cv::imread("data/test2.jpg");
 	if (!testImg.data) {
@@ -149,10 +156,15 @@ int main() {
 	cv::waitKey();
 	cout << "load image done!!" << endl;
 
-
+	cudaStream_t stream1,stream2;
+	cudaStreamCreateWithFlags( &stream1, cudaStreamNonBlocking );
+	cudaStreamCreateWithFlags( &stream2, cudaStreamNonBlocking );
+	/*// flag为以下两种，默认为第一种，非阻塞便是第二种。
+	cudaStreamDefault: default stream creation flag (blocking)
+	cudaStreamNonBlocking: asynchronous stream creation flag (non-blocking)*/
 
 	//brisk计算特征点
-	BRISK_Impl a(true,dstImage.rows, dstImage.cols);
+	BRISK_Impl a(stream1,true,dstImage.rows, dstImage.cols);
 
 	int2 size;
 
@@ -182,7 +194,7 @@ int main() {
 
 	cout << "a finished" << endl;
 
-	BRISK_Impl a1(true,dstImage1.rows, dstImage1.cols);
+	BRISK_Impl a1(stream2,true,dstImage1.rows, dstImage1.cols);
 	int2 size1 = a1.detectAndCompute(imageIn1, a1.keypointsG, a1.kpSizeG, a1.kpScoreG,a1.descriptorsG,
 				false);
 	cout << "原始图特征点数： 去边角前--" << size.x << " 去掉边角后--" << size.y << endl;

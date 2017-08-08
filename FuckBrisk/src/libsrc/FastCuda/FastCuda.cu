@@ -255,26 +255,26 @@ __inline__ int calcKeypoints_gpu(PtrStepSzb img, PtrStepSzb mask, short2* kpLoc,
     grid.y = divUp(img.rows - 6, block.y);
 
 
-    CUDA_CHECK_RETURN(cudaMemsetAsync(counter_ptr, 0, sizeof(unsigned int)));
+    CUDA_CHECK_RETURN(cudaMemsetAsync(counter_ptr, 0, sizeof(unsigned int),stream));
 
     if (score.data)
     {
         if (mask.data)
-            calcKeypoints<true><<<grid, block>>>(img, SingleMask(mask), kpLoc, maxKeypoints, score, threshold);
+            calcKeypoints<true><<<grid, block,0,stream>>>(img, SingleMask(mask), kpLoc, maxKeypoints, score, threshold);
         else
-            calcKeypoints<true><<<grid, block>>>(img, WithOutMask(), kpLoc, maxKeypoints, score, threshold);
+            calcKeypoints<true><<<grid, block,0,stream>>>(img, WithOutMask(), kpLoc, maxKeypoints, score, threshold);
     }
     else
     {
         if (mask.data)
-            calcKeypoints<false><<<grid, block>>>(img, SingleMask(mask), kpLoc, maxKeypoints, score, threshold);
+            calcKeypoints<false><<<grid, block,0,stream>>>(img, SingleMask(mask), kpLoc, maxKeypoints, score, threshold);
         else
-            calcKeypoints<false><<<grid, block>>>(img, WithOutMask(), kpLoc, maxKeypoints, score, threshold);
+            calcKeypoints<false><<<grid, block,0,stream>>>(img, WithOutMask(), kpLoc, maxKeypoints, score, threshold);
     }
 
     unsigned int count = 0;
 
-    CUDA_CHECK_RETURN(cudaMemcpyAsync(&count, counter_ptr, sizeof(unsigned int), cudaMemcpyDeviceToHost));
+    CUDA_CHECK_RETURN(cudaMemcpyAsync(&count, counter_ptr, sizeof(unsigned int), cudaMemcpyDeviceToHost,stream));
 
     return count;
 }
@@ -326,30 +326,23 @@ __inline__ int nonmaxSuppression_gpu(const short2* kpLoc, int count, PtrStepSzi 
     dim3 grid;
     grid.x = divUp(count, block.x);
 
-    CUDA_CHECK_RETURN(cudaMemsetAsync(counter_ptr, 0, sizeof(unsigned int)));//todo: cudaSafeCall
+    CUDA_CHECK_RETURN(cudaMemsetAsync(counter_ptr, 0, sizeof(unsigned int),stream));//todo: cudaSafeCall
 
     nonmaxSuppression<<<grid, block, 0, stream>>>(kpLoc, count, score, loc, response);
     CUDA_CHECK_RETURN(cudaGetLastError());//todo: cudaSafeCall
 
     unsigned int new_count;
-    CUDA_CHECK_RETURN(cudaMemcpyAsync(&new_count, counter_ptr, sizeof(unsigned int), cudaMemcpyDeviceToHost));//todo: cudaSafeCall
+    CUDA_CHECK_RETURN(cudaMemcpyAsync(&new_count, counter_ptr, sizeof(unsigned int), cudaMemcpyDeviceToHost,stream));//todo: cudaSafeCall
 
     return new_count;
 }
 
 
-int interfaceNoMaxSup(int rows, int cols, int steps, const short2* keypoints, int count, int* scores, short2* loc, float* response)
-{
-	PtrStepSzi scores_( rows, cols, scores, steps);
-	return nonmaxSuppression_gpu(keypoints, count, scores_, loc, response, NULL);
-}
-
-
-int detectMe1( PtrStepSzb image, short2* keyPoints, PtrStepSzi scores, short2* loc, float* response,int threshold, int maxPoints,  bool ifNoMaxSup)
+int detectMe1(cudaStream_t& stream_, PtrStepSzb image, short2* keyPoints, PtrStepSzi scores, short2* loc, float* response,int threshold, int maxPoints,  bool ifNoMaxSup)
 {
     PtrStepSzb mask( image.rows, image.cols, NULL, image.step);
 
-    int count = calcKeypoints_gpu(image, mask, keyPoints, maxPoints, scores, threshold, NULL );
+    int count = calcKeypoints_gpu(image, mask, keyPoints, maxPoints, scores, threshold, stream_ );
 
     count = std::min(count, maxPoints);
 
@@ -362,7 +355,7 @@ int detectMe1( PtrStepSzb image, short2* keyPoints, PtrStepSzi scores, short2* l
 
     if (ifNoMaxSup)
     {
-    	count = nonmaxSuppression_gpu(keyPoints, count, scores, loc, response, NULL);
+    	count = nonmaxSuppression_gpu(keyPoints, count, scores, loc, response, stream_);
         if (count == 0)
         {
         	std::cerr << "In FastCuda.cu: No keyPoints, something wrong!!" << std::endl;

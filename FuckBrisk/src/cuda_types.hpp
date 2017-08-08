@@ -60,21 +60,21 @@ template<typename T> __CV_CUDA_HOST_DEVICE__ T maxMe(T a, T b)
     return a>=b? a:b;
 }
 
-template<typename T> __host__  T * newArray( T *& ptr, int size, bool ifset )
+template<typename T> __host__  T * newArray( T *& ptr, int size, bool ifset, cudaStream_t& stream_ )
 {
     CUDA_CHECK_RETURN( cudaMalloc((void**)&ptr, sizeof(T) * size));
     if( ifset )
     {
-        CUDA_CHECK_RETURN(cudaMemsetAsync( ptr, 0, sizeof(T)*size ));
+        CUDA_CHECK_RETURN(cudaMemsetAsync( ptr, 0, sizeof(T)*size, stream_ ));
     }
 
     return ptr;
 }
 
-template<typename T> __host__  bool cleanArray( T * ptr, int size )
+template<typename T> __host__  bool cleanArray( T * ptr, int size,cudaStream_t& stream_ )
 {
 
-    CUDA_CHECK_RETURN(cudaMemsetAsync ( ptr, 0, sizeof(T)*size ));
+    CUDA_CHECK_RETURN(cudaMemsetAsync ( ptr, 0, sizeof(T)*size,stream_ ));
 
     return true;
 }
@@ -133,18 +133,18 @@ public:
     __CV_CUDA_HOST_DEVICE__ PtrStepSz(int rows_, int cols_, T* data_, size_t step_)
         : PtrStep<T>(data_, step_), cols(cols_), rows(rows_) {}
 
-    __CV_CUDA_HOST_DEVICE__ PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
+    __CV_CUDA_HOST_DEVICE__ PtrStepSz(cudaStream_t& stream_,bool ifset_, int rows_, int cols_, T* data_, size_t step_)
             : PtrStep<T>(data_, step_), cols(cols_), rows(rows_)
               {
                 //newArray( T * ptr, int size, bool ifset )
-                newArrayIn(this->data,rows_*cols_,true);
+                newArrayIn(this->data,rows_*cols_,true,stream_);
               }
 
-            PtrStepSz(int isHost, bool ifset_, int rows_, int cols_, T* data_, size_t step_)
+            PtrStepSz(cudaStream_t& stream_,int isHost, bool ifset_, int rows_, int cols_, T* data_, size_t step_)
             : PtrStep<T>(data_, step_), cols(cols_), rows(rows_)
               {
                 //newArray( T * ptr, int size, bool ifset )
-                newArray(this->data,rows_*cols_,true);
+                newArray(this->data,rows_*cols_,true,stream_);
               }
 
 

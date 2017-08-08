@@ -24,7 +24,7 @@
 int detectMe(int rows, int cols, int step, unsigned char* image, short2* keyPoints, int* scores, short2* loc, float* response,int threshold=10, int maxPoints=5000, bool ifNoMaxSup = true);
 //int detectMe1(cv::InputArray imageCpu, int rows, int cols, PtrStepSzb image, short2* keyPoints, PtrStepSzi scores, short2* loc, float* response,int threshold=10, int maxPoints=5000,  bool ifNoMaxSup=true);
 
-int detectMe1( PtrStepSzb image, short2* keyPoints, PtrStepSzi scores, short2* loc, float* response,int threshold=10, int maxPoints=5000, bool ifNoMaxSup = true);
+int detectMe1(cudaStream_t& stream_, PtrStepSzb image, short2* keyPoints, PtrStepSzi scores, short2* loc, float* response,int threshold=10, int maxPoints=5000, bool ifNoMaxSup = true);
 
 
 

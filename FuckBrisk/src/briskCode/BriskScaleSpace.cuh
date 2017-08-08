@@ -13,6 +13,8 @@
 
 class BriskLayerOne {
 
+	cudaStream_t streamG;
+
 public:
     int ptrcount;
 
@@ -102,10 +104,10 @@ public:
     twothirdsample(bool isFisrtTime, const PtrStepSzb& srcimg,
             PtrStepSzb& dstimg);
 
-    void FuckReset(bool isFisrtTime, const PtrStepSzb& img_in, float scale =
+    void FuckReset(cudaStream_t& stream1,bool isFisrtTime, const PtrStepSzb& img_in, float scale =
             1.0f, float offset = 0.0f);
 
-    void FuckReset(bool isFisrtTime, const BriskLayerOne& layer, int mode);
+    void FuckReset(cudaStream_t& stream1,bool isFisrtTime, const BriskLayerOne& layer, int mode);
 
     BriskLayerOne() :
             agast(640), ptrcount(0), hasFuckReset(false), saveTheOriginImage(
@@ -121,8 +123,9 @@ const int layerExpected = 8;
 class BriskScaleSpace {
 public:
     int ptrcount;
+    cudaStream_t streamG;
     // construct telling the octaves number:
-    BriskScaleSpace(int _octaves = 3);
+    BriskScaleSpace(cudaStream_t& stream1, int _octaves = 3);
     ~BriskScaleSpace() {
         if (ptrcount == 0) {
             //cout << "got me in ~BriskLayerOne" << endl;
@@ -224,14 +227,16 @@ public:
     int isFirstTime;
     bool useSelfArray;
 
+    cudaStream_t streamG;
+
     BriskScaleSpace briskScaleSpace;
 
-    explicit BRISK_Impl(bool useSelfArray, int rows, int cols, int thresh = 30, int octaves = 3,
+    explicit BRISK_Impl(cudaStream_t& stream_, bool useSelfArray, int rows, int cols, int thresh = 30, int octaves = 3,
             float patternScale = 1.0f);
 
     __host__ ~BRISK_Impl();
 
-    BRISK_Impl(const BRISK_Impl& c) {
+    BRISK_Impl(const BRISK_Impl& c) :briskScaleSpace(c.briskScaleSpace) { //todo: check if right
         *this = c;
         ptrcount = c.ptrcount + 1;
         briskScaleSpace.ptrcount = c.briskScaleSpace.ptrcount + 1;
@@ -308,7 +313,6 @@ public:
     PtrStepSzb descriptorsG;
 
     int* valuesInG;
-    int* thetaG;
 };
 
 const float BRISK_Impl::basicSize_ = 12.0f;
@@ -328,8 +332,9 @@ const float BriskScaleSpace::basicSize_ = 12.0f;
  * @param offset_in
  */
 // construct a layer
-void BriskLayerOne::FuckReset(bool isFisrtTime, const PtrStepSzb& img_in,
+void BriskLayerOne::FuckReset(cudaStream_t& stream1,bool isFisrtTime, const PtrStepSzb& img_in,
         float scale_in, float offset_in) {
+	streamG = stream1;
     ptrcount = 0;
     hasFuckReset = true;
     agast = Agast(img_.step);
@@ -338,9 +343,9 @@ void BriskLayerOne::FuckReset(bool isFisrtTime, const PtrStepSzb& img_in,
     int* scoreData;
     //PtrStepSz(bool ifset_, int rows_, int cols_, T* data_, size_t step_)
     if (isFisrtTime) {
-        scores_ = PtrStepSzi(1, true, img_.rows, img_.cols, scoreData,
+        scores_ = PtrStepSzi( streamG,1, true, img_.rows, img_.cols, scoreData,
                 img_.cols);
-        newArray(locTemp, maxPointNow, false);
+        newArray(locTemp, maxPointNow, false,streamG);
     }
     scale_ = scale_in;
     offset_ = offset_in;
@@ -352,10 +357,10 @@ void BriskLayerOne::FuckReset(bool isFisrtTime, const PtrStepSzb& img_in,
  * @param layer
  * @param mode
  */
-void BriskLayerOne::FuckReset(bool isFisrtTime, const BriskLayerOne& layer,
+void BriskLayerOne::FuckReset(cudaStream_t& stream1,bool isFisrtTime, const BriskLayerOne& layer,
         int mode) {
 
-
+	streamG = stream1;
 
     hasFuckReset = true;
     ptrcount = 0;
@@ -404,15 +409,15 @@ void BriskLayerOne::FuckReset(bool isFisrtTime, const BriskLayerOne& layer,
 
     int* scoreData;
     if (isFisrtTime) {
-        scores_ = PtrStepSzi(1, true, img_.rows, img_.cols, scoreData,
+        scores_ = PtrStepSzi( streamG,1, true, img_.rows, img_.cols, scoreData,
                 img_.cols);
-        newArray(locTemp, maxPointNow, false);
+        newArray(locTemp, maxPointNow, false,streamG);
     }
 }
 
 int BriskLayerOne::getAgastPoints(int threshold, short2* keypoints,
         float* scores) {
-    return detectMe1(img_, locTemp, scores_, keypoints, scores, threshold);
+    return detectMe1(streamG,img_, locTemp, scores_, keypoints, scores, threshold );
 }
 
 /***
@@ -701,17 +706,17 @@ inline void BriskLayerOne::twothirdsample(bool isFisrtTime,
 
 // construct the image pyramids
 // construct telling the octaves number:
-BriskScaleSpace::BriskScaleSpace(int _octaves) :
+BriskScaleSpace::BriskScaleSpace(cudaStream_t& stream1,int _octaves) : streamG(stream1),
         ptrcount(0) {
     if (_octaves == 0)
         layers_ = 1;
     else
         layers_ = 2 * _octaves;
 
-    newArray(scoreTemp, maxPointNow, false);
+    newArray(scoreTemp, maxPointNow, false,streamG);
 
     for (int i = 0; i < layerExpected; i++) {
-        newArray(kpsLoc[i], maxPointNow, false);
+        newArray(kpsLoc[i], maxPointNow, false,streamG);
     }
     pyramid_[0].saveTheOriginImage = true;
 }
@@ -719,15 +724,15 @@ BriskScaleSpace::BriskScaleSpace(int _octaves) :
 void BriskScaleSpace::constructPyramid(PtrStepSzb& image, bool isFisrtTime) {
 
     const int octaves2 = layers_;
-    pyramid_[0].FuckReset(isFisrtTime, image);
+    pyramid_[0].FuckReset(streamG,isFisrtTime, image);
 
-    pyramid_[1].FuckReset(isFisrtTime, pyramid_[0],
+    pyramid_[1].FuckReset(streamG,isFisrtTime, pyramid_[0],
             BriskLayerOne::CommonParams::TWOTHIRDSAMPLE);
 
     for (int i = 2; i < octaves2; i += 2) {
-        pyramid_[i].FuckReset(isFisrtTime, pyramid_[i - 2],
+        pyramid_[i].FuckReset(streamG,isFisrtTime, pyramid_[i - 2],
                 BriskLayerOne::CommonParams::HALFSAMPLE);
-        pyramid_[i + 1].FuckReset(isFisrtTime, pyramid_[i - 1],
+        pyramid_[i + 1].FuckReset(streamG,isFisrtTime, pyramid_[i - 1],
                 BriskLayerOne::CommonParams::HALFSAMPLE);
     }
 }
@@ -761,16 +766,16 @@ int BriskScaleSpace::getKeypoints(const int threshold_, float2* keypoints,
         CUDA_CHECK_RETURN(cudaGetSymbolAddress(&counter_ptr, g_counter1));
 
         CUDA_CHECK_RETURN(
-                cudaMemsetAsync(counter_ptr, 0, sizeof(unsigned int)));
+                cudaMemsetAsync(counter_ptr, 0, sizeof(unsigned int),streamG));
 
-        refineKernel1<<<kpsCount[0] / (32 * 4) + 1, 32 * 4, 0>>>(*this,
+        refineKernel1<<<kpsCount[0] / (32 * 4) + 1, 32 * 4, 0,streamG>>>(*this,
                 keypoints, kpSize, kpScore, threshold_, 0);
 
         CUDA_CHECK_RETURN(cudaGetLastError());
 
         CUDA_CHECK_RETURN(
                 cudaMemcpyAsync(&kpsCountAfter[0], counter_ptr,
-                        sizeof(unsigned int), cudaMemcpyDeviceToHost));
+                        sizeof(unsigned int), cudaMemcpyDeviceToHost,streamG));
 
 
 
@@ -782,21 +787,21 @@ int BriskScaleSpace::getKeypoints(const int threshold_, float2* keypoints,
     void* counter_ptr;
     CUDA_CHECK_RETURN(cudaGetSymbolAddress(&counter_ptr, g_counter1));
 
-    CUDA_CHECK_RETURN(cudaMemsetAsync(counter_ptr, 0, sizeof(unsigned int)));
+    CUDA_CHECK_RETURN(cudaMemsetAsync(counter_ptr, 0, sizeof(unsigned int),streamG));
 
     dim3 grid;
     grid.x = layers_;
     grid.y = (maxLayersPoints < 32 ? 32 : maxLayersPoints) / 32; //todo optimize
     //maxLayersPoints
 
-    refineKernel2<<<grid, 32, 0>>>(*this, keypoints, kpSize, kpScore,
+    refineKernel2<<<grid, 32, 0, streamG>>>(*this, keypoints, kpSize, kpScore,
             threshold_);
 
     CUDA_CHECK_RETURN(cudaGetLastError());
 
     CUDA_CHECK_RETURN(
             cudaMemcpyAsync(&kpsCountAfter[0], counter_ptr,
-                    sizeof(unsigned int), cudaMemcpyDeviceToHost));
+                    sizeof(unsigned int), cudaMemcpyDeviceToHost,streamG));
 
 
 
@@ -2021,9 +2026,6 @@ __host__ BRISK_Impl::~BRISK_Impl() {
         CUDA_CHECK_RETURN(cudaFree(sizeList_));
         CUDA_CHECK_RETURN(cudaFree(_integralG.data));
         CUDA_CHECK_RETURN(cudaFree(valuesInG));
-        CUDA_CHECK_RETURN(cudaFree(thetaG));
-
-
 
         if( useSelfArray )
         {
@@ -2074,7 +2076,6 @@ __device__ inline int smoothedIntensity(BRISK_Impl& briskImpl,
     const BRISK_Impl::BriskPatternPoint& briskPoint =
             briskImpl.patternPoints_[scale * briskImpl.n_rot_
                     * briskImpl.points_ + rot * briskImpl.points_ + point];
-
     const float xf = briskPoint.x + key_x;
     const float yf = briskPoint.y + key_y;
     const int x = int(xf);
@@ -2100,10 +2101,6 @@ __device__ inline int smoothedIntensity(BRISK_Impl& briskImpl,
                 + r_x * r_y * ptr[step] + r_x_1 * r_y * ptr[step + 1];
         return (ret_val + 512) / 1024;
     }
-
-
-
-
     // this is the standard case (simple, not speed optimized yet):
 
     // scaling:
@@ -2112,7 +2109,6 @@ __device__ inline int smoothedIntensity(BRISK_Impl& briskImpl,
 
     // the integral image is larger:
     const int integralcols = integral.step;
-
 
     // calculate borders
     const float x_1 = xf - sigma_half;
@@ -2124,8 +2120,6 @@ __device__ inline int smoothedIntensity(BRISK_Impl& briskImpl,
     const int y_top = int(y_1 + 0.5);
     const int x_right = int(x1 + 0.5);
     const int y_bottom = int(y1 + 0.5);
-
-
 
     // overlap area - multiplication factors:
     const float r_x_1 = float(x_left) - x_1 + 0.5f;
@@ -2142,10 +2136,6 @@ __device__ inline int smoothedIntensity(BRISK_Impl& briskImpl,
     const int r_y_1_i = (int) (r_y_1 * scaling);
     const int r_x1_i = (int) (r_x1 * scaling);
     const int r_y1_i = (int) (r_y1 * scaling);
-
-
-
-
 
     if (dx + dy > 2) {
 
@@ -2235,15 +2225,14 @@ __device__ inline int smoothedIntensity(BRISK_Impl& briskImpl,
 }
 
 
-__global__ void generateDesDeleteBorder(BRISK_Impl briskImpl, const int ksize,
+__global__ void generateDesKernel(BRISK_Impl briskImpl, const int ksize,
         float2* keypoints, float* kpSize, float* kpScore, PtrStepSzb _image, PtrStepSzb descriptors,
-        bool doDescriptors, bool doOrientation, bool useProvidedKeypoints)
-{
-	const int blockId = blockIdx.y + blockIdx.x * gridDim.y;
-    const int blockBase = blockId * blockDim.x * blockDim.y;
-    const int threadId = blockBase + threadIdx.x * blockDim.y + threadIdx.y;
-	const int k = (blockBase + threadIdx.x * blockDim.y)/blockDim.y;//todo: 这种计算法下，必须保证blockDim.y=1
-	const int k_i = threadIdx.y;
+        bool doDescriptors, bool doOrientation, bool useProvidedKeypoints) {
+
+    const int k = threadIdx.x + blockIdx.x * blockDim.x;
+    float angle = 0;
+    unsigned int ind = 0;
+    unsigned char* ptr;
 
     if (k >= ksize) {
         return;
@@ -2270,93 +2259,53 @@ __global__ void generateDesDeleteBorder(BRISK_Impl briskImpl, const int ksize,
             (float) border_y, keypoints[k])) {
         keypoints[k] = make_float2(-1, -1);
         briskImpl.kscalesG[k] = -1;   //mark as bad.
-    } else {
-        atomicInc(&g_counter1, (unsigned int) (-1));
-    }
-}
 
-__global__ void generateDesSmoothedIntensity(float theta,BRISK_Impl briskImpl, const int ksize,
-        float2* keypoints, float* kpSize, float* kpScore, PtrStepSzb _image, PtrStepSzb descriptors,
-        bool doDescriptors, bool doOrientation, bool useProvidedKeypoints)
-{
-	const int blockId = blockIdx.y + blockIdx.x * gridDim.y;
-    const int blockBase = blockId * blockDim.x * blockDim.y;
-    const int threadId = blockBase + threadIdx.x * blockDim.y + threadIdx.y;
-	const int k = (blockBase + threadIdx.x * blockDim.y)/blockDim.y;//todo: 这种计算法下，必须保证blockDim.y=Points_
-	const int k_i = threadIdx.y;
-
-    if (k >= ksize || keypoints[k].x == -1 || keypoints[k].y == -1 || briskImpl.kscalesG[k] == -1) {
         return;
+    } else {
+        ind = atomicInc(&g_counter1, (unsigned int) (-1));
+        ptr = descriptors.data + (ind) * briskImpl.strings_;
     }
 
-    int* valuesIn = briskImpl.valuesInG + k * briskImpl.points_;
-    int* pvalues = valuesIn +  k_i;//todo: blockDim.y = briskImpl.points_
-    const int& scale1 = briskImpl.kscalesG[k];
+    int t1;
+    int t2;
+
+    // the feature orientation
+
     float2 kp = keypoints[k];
+    const int& scale1 = briskImpl.kscalesG[k];
+
+    int* valuesIn = briskImpl.valuesInG + ind * briskImpl.points_;
+
+    int* pvalues = valuesIn;
     const float& x = kp.x;
     const float& y = kp.y;
 
     //为了计算梯度方向只能先算一遍灰度值
-    //if (doOrientation) {
+    if (doOrientation) {
 
         // get the gray values in the unrotated pattern
-        //for (unsigned int i = 0; i < briskImpl.points_; i++) {
-    if( theta == 0  )
-    {
-    	*(pvalues) = smoothedIntensity(briskImpl, _image,
-			briskImpl._integralG, x, y, scale1, 0, k_i);
-    }
-    else
-    {
-    	*(pvalues) = smoothedIntensity(briskImpl, _image,
-			briskImpl._integralG, x, y, scale1, briskImpl.thetaG[k], k_i);
-    }
-}
-
-__global__ void generateDesKernel(BRISK_Impl briskImpl, const int ksize,
-        float2* keypoints, float* kpSize, float* kpScore, PtrStepSzb _image, PtrStepSzb descriptors,
-        bool doDescriptors, bool doOrientation, bool useProvidedKeypoints) {
-
-	const int blockId = blockIdx.y + blockIdx.x * gridDim.y;
-    const int blockBase = blockId * blockDim.x * blockDim.y;
-    const int threadId = blockBase + threadIdx.x * blockDim.y + threadIdx.y;
-	const int k = (blockBase + threadIdx.x * blockDim.y)/blockDim.y;//todo: 这种计算法下，必须保证blockDim.y=1
-	const int k_i = threadIdx.y;
-
-    float angle = 0;
-
-    if (k >= ksize || keypoints[k].x == -1 || keypoints[k].y == -1 || briskImpl.kscalesG[k] == -1) {
-        return;
-    }
-
-    // the feature orientation
-
-/*    float2 kp = keypoints[k];
-    const int& scale1 = briskImpl.kscalesG[k];
-    const float& x = kp.x;
-    const float& y = kp.y;*/
-
-    //return;
-	//计算梯度方向
-	int direction0 = 0;
-	int direction1 = 0;
-	int t1 = 0;
-	int t2 = 0;
-    int* valuesIn = briskImpl.valuesInG + k * briskImpl.points_;
-	// now iterate through the long pairings
-	const BRISK_Impl::BriskLongPair* max = briskImpl.longPairs_
-			+ briskImpl.noLongPairs_;
-	for (BRISK_Impl::BriskLongPair* iter = briskImpl.longPairs_; iter < max;
-			++iter) {
-		t1 = *(valuesIn + iter->i);
-		t2 = *(valuesIn + iter->j);
-		const int delta_t = (t1 - t2);
-		// update the direction:
-		const int tmp0 = delta_t * (iter->weighted_dx) / 1024;
-		const int tmp1 = delta_t * (iter->weighted_dy) / 1024;
-		direction0 += tmp0;
-		direction1 += tmp1;
-	}
+        for (unsigned int i = 0; i < briskImpl.points_; i++) {
+            *(pvalues++) = smoothedIntensity(briskImpl, _image,
+                    briskImpl._integralG, x, y, scale1, 0, i);
+        }
+        //return;
+        //计算梯度方向
+        int direction0 = 0;
+        int direction1 = 0;
+        // now iterate through the long pairings
+        const BRISK_Impl::BriskLongPair* max = briskImpl.longPairs_
+                + briskImpl.noLongPairs_;
+        for (BRISK_Impl::BriskLongPair* iter = briskImpl.longPairs_; iter < max;
+                ++iter) {
+            t1 = *(valuesIn + iter->i);
+            t2 = *(valuesIn + iter->j);
+            const int delta_t = (t1 - t2);
+            // update the direction:
+            const int tmp0 = delta_t * (iter->weighted_dx) / 1024;
+            const int tmp1 = delta_t * (iter->weighted_dy) / 1024;
+            direction0 += tmp0;
+            direction1 += tmp1;
+        }
 
         angle = (float) (atan2((float) direction1, (float) direction0) / CV_PI
                 * 180.0);    //tod: check if right
@@ -2365,7 +2314,7 @@ __global__ void generateDesKernel(BRISK_Impl briskImpl, const int ksize,
             if (angle < 0)
                 angle += 360.f;
         }
-    //}
+    }
 
     if (!doDescriptors)
         return;
@@ -2382,81 +2331,49 @@ __global__ void generateDesKernel(BRISK_Impl briskImpl, const int ksize,
             theta -= briskImpl.n_rot_;
     }
 
-
-
-    briskImpl.thetaG[k] = theta;
-
     if (angle < 0)
         angle += 360.f;
 
     // now also extract the stuff for the actual direction:
     // let us compute the smoothed values
+    int shifter = 0;
+
     //unsigned int mean=0;
+    pvalues = valuesIn;
     // get the gray values in the rotated pattern
 
-/*    for (unsigned int i = 0; i < briskImpl.points_; i++) {
+    for (unsigned int i = 0; i < briskImpl.points_; i++) {
         *(pvalues++) = smoothedIntensity(briskImpl, _image,
                 briskImpl._integralG, x, y, scale1, theta, i);
-    }*/
-
-
-
-
-    //free(valuesIn);
-}
-
-__global__ void generateDesKernelFinal(BRISK_Impl briskImpl, const int ksize,
-        float2* keypoints, float* kpSize, float* kpScore, PtrStepSzb _image, PtrStepSzb descriptors,
-        bool doDescriptors, bool doOrientation, bool useProvidedKeypoints)
-{
-	const int blockId = blockIdx.y + blockIdx.x * gridDim.y;
-    const int blockBase = blockId * blockDim.x * blockDim.y;
-    const int threadId = blockBase + threadIdx.x * blockDim.y + threadIdx.y;
-	const int k = (blockBase + threadIdx.x * blockDim.y)/blockDim.y;//todo: 这种计算法下，必须保证blockDim.y=shortPair/(32)
-	const int k_i = threadIdx.y;
-
-    if (k >= ksize || keypoints[k].x == -1 || keypoints[k].y == -1 || briskImpl.kscalesG[k] == -1) {
-        return;
     }
 
-    int* valuesIn = briskImpl.valuesInG + k * briskImpl.points_;
 
-    //unsigned int ind = atomicInc(&g_counter1, (unsigned int) (-1));
-    unsigned char* ptr = descriptors.data + (k) * briskImpl.strings_;
-
-    briskImpl.thetaG[threadId] = k;
-
-
-    int t1;
-    int t2;
-
-    int shifter = 0;
     //最终计算灰度
     // now iterate through all the pairings
     unsigned int* ptr2 = (unsigned int*) ptr;
-    ptr2 = ptr2 + k_i;
+    //*ptr2 = 0;//todo: check if right
 
-
-    const BRISK_Impl::BriskShortPair* max1 = briskImpl.shortPairs_
-            + (1+k_i)*32;//todo: 整除隐患
-    for (BRISK_Impl::BriskShortPair* iter = briskImpl.shortPairs_ + k_i*32; iter < max1;
+    const BRISK_Impl::BriskShortPair* max = briskImpl.shortPairs_
+            + briskImpl.noShortPairs_;
+    for (BRISK_Impl::BriskShortPair* iter = briskImpl.shortPairs_; iter < max;
             ++iter) {
         t1 = *(valuesIn + iter->i);
         t2 = *(valuesIn + iter->j);
         if (t1 > t2) {
             *ptr2 |= ((1) << shifter);
+
         } // else already initialized with zero
           // take care of the iterators:
         ++shifter;
-/*        if (shifter == 32) {
+        if (shifter == 32) {
             shifter = 0;
             ++ptr2;
             //*ptr2 = 0;//todo: check if right
-        }*/
+        }
     }
+
+    //free(valuesIn);
 }
-
-
 
 
 void integral(PtrStepSzb _image, PtrStepSzi ret) {
@@ -2497,66 +2414,23 @@ int2 BRISK_Impl::computeDescriptorsAndOrOrientation(PtrStepSzb _image,
     int ksize = keyPointsCount;
 
     void* counter_ptr;
-
     CUDA_CHECK_RETURN(cudaGetSymbolAddress(&counter_ptr, g_counter1));
 
-    CUDA_CHECK_RETURN(cudaMemsetAsync(counter_ptr, 0, sizeof(unsigned int)));
+    CUDA_CHECK_RETURN(cudaMemsetAsync(counter_ptr, 0, sizeof(unsigned int),streamG));
 
-    int temp = 0;
+    CUDA_CHECK_RETURN(cudaMemsetAsync(descriptors, 0, sizeof(unsigned char)*strings_*ksize,streamG));
 
-    int mp = 128;
-    //int divToGridY = 32;
-    int divToGridY0 = 1;
-	dim3 block0(mp/divToGridY0, 1);
-	dim3 grid0((ksize + mp - 1) / mp, divToGridY0);
 
-    generateDesDeleteBorder<<<grid0, block0>>>(*this, ksize,
+    generateDesKernel<<<ksize + 32 - 1 / 32, 32,0,streamG>>>(*this, ksize,
             keypoints, kpSize, kpScore, _image, descriptors, doDescriptors, doOrientation,
             useProvidedKeypoints);
 
+    CUDA_CHECK_RETURN(cudaGetLastError());
+    int temp;
+    CUDA_CHECK_RETURN(
+            cudaMemcpyAsync(&temp, counter_ptr, sizeof(unsigned int),
+                    cudaMemcpyDeviceToHost,streamG)); //todo: change to no-async?
 
-    /*CUDA_CHECK_RETURN(
-    			cudaDeviceSynchronize());*/
-	CUDA_CHECK_RETURN(
-			cudaMemcpyAsync(&temp, counter_ptr, sizeof(unsigned int),
-					cudaMemcpyDeviceToHost)); //todo: change to no-async?
-
-    int divToGridY1 = 8;
-	dim3 block1(mp/divToGridY1, points_);
-	dim3 grid1((ksize + mp - 1) / mp, divToGridY1);
-
-	//(ksize + 32 - 1) / 32
-    generateDesSmoothedIntensity<<<grid1, block1>>>(0,*this, ksize,
-            keypoints, kpSize, kpScore, _image, descriptors, doDescriptors, doOrientation,
-            useProvidedKeypoints);
-
-    int divToGridY2 = 1;
-	dim3 block2(mp/divToGridY2, 1);
-	dim3 grid2((ksize + mp - 1) / mp, divToGridY2);
-
-
-    generateDesKernel<<<grid2, block2>>>(*this, ksize,
-            keypoints, kpSize, kpScore, _image, descriptors, doDescriptors, doOrientation,
-            useProvidedKeypoints);
-
-    //int divToGridY4 = 2;
-    int divToGridY4 = 8;
-	dim3 block4(mp/divToGridY4, points_);
-	dim3 grid4((ksize + mp - 1) / mp, divToGridY4);
-
-	//(ksize + 32 - 1) / 32
-    generateDesSmoothedIntensity<<<grid4, block4>>>(1, *this, ksize,
-            keypoints, kpSize, kpScore, _image, descriptors, doDescriptors, doOrientation,
-            useProvidedKeypoints);
-
-    int divToGridY3 = 4;
-	dim3 block3(mp/divToGridY3, this->noShortPairs_/32);//todo : check 512/32整除
-	dim3 grid3((ksize + mp - 1) / mp, divToGridY3);
-	CUDA_CHECK_RETURN(cudaMemsetAsync(descriptors, 0, sizeof(unsigned char)*strings_*ksize));
-
-    generateDesKernelFinal<<<grid3, block3>>>(*this, ksize,
-             keypoints, kpSize, kpScore, _image, descriptors, doDescriptors, doOrientation,
-             useProvidedKeypoints);
 
 
     return make_int2(ksize, temp);
@@ -2706,32 +2580,32 @@ void BRISK_Impl::generateKernel(const float* radiusList, const int* numberList,
 
     //start memCopy
 
-    newArray(shortPairs_, points_ * (points_ - 1) / 2, 1);
-    newArray(longPairs_, points_ * (points_ - 1) / 2, 1);
-    newArray(scaleList_, scales_, 1);
-    newArray(sizeList_, scales_, 1);
-    newArray(patternPoints_, points_ * scales_ * n_rot_, 1);
-    newArray(scaleList_, scales_, 1);
-    newArray(sizeList_, scales_, 1);
+    newArray(shortPairs_, points_ * (points_ - 1) / 2, 1,streamG);
+    newArray(longPairs_, points_ * (points_ - 1) / 2, 1,streamG);
+    newArray(scaleList_, scales_, 1,streamG);
+    newArray(sizeList_, scales_, 1,streamG);
+    newArray(patternPoints_, points_ * scales_ * n_rot_, 1,streamG);
+    newArray(scaleList_, scales_, 1,streamG);
+    newArray(sizeList_, scales_, 1,streamG);
 
     CUDA_CHECK_RETURN(
             cudaMemcpyAsync(patternPoints_, patternPoints_i,
                     sizeof(BriskPatternPoint) * points_ * scales_ * n_rot_,
-                    cudaMemcpyHostToDevice));
+                    cudaMemcpyHostToDevice,streamG));
     CUDA_CHECK_RETURN(
             cudaMemcpyAsync(scaleList_, scaleList_i, sizeof(float) * scales_,
-                    cudaMemcpyHostToDevice));
+                    cudaMemcpyHostToDevice,streamG));
     CUDA_CHECK_RETURN(
             cudaMemcpyAsync(sizeList_, sizeList_i, sizeof(unsigned int) * scales_,
-                    cudaMemcpyHostToDevice));
+                    cudaMemcpyHostToDevice,streamG));
     CUDA_CHECK_RETURN(
             cudaMemcpyAsync(shortPairs_, shortPairs_i,
                     sizeof(BriskShortPair) * points_ * (points_ - 1) / 2,
-                    cudaMemcpyHostToDevice));
+                    cudaMemcpyHostToDevice,streamG));
     CUDA_CHECK_RETURN(
             cudaMemcpyAsync(longPairs_, longPairs_i,
                     sizeof(BriskLongPair) * points_ * (points_ - 1) / 2,
-                    cudaMemcpyHostToDevice));
+                    cudaMemcpyHostToDevice,streamG));
 
     free(shortPairs_i);
     free(longPairs_i);
@@ -2740,9 +2614,9 @@ void BRISK_Impl::generateKernel(const float* radiusList, const int* numberList,
     free(patternPoints_i);
 }
 
-BRISK_Impl::BRISK_Impl(bool useSelfArray_, int rows, int cols, int thresh, int octaves_in,
+BRISK_Impl::BRISK_Impl(cudaStream_t& stream_,bool useSelfArray_, int rows, int cols, int thresh, int octaves_in,
         float patternScale) : useSelfArray(useSelfArray_),
-        ptrcount(0), briskScaleSpace(octaves_in), isFirstTime(true) {
+        ptrcount(0), briskScaleSpace(stream_,octaves_in), isFirstTime(true),streamG( stream_) {
 
 
 
@@ -2770,23 +2644,22 @@ BRISK_Impl::BRISK_Impl(bool useSelfArray_, int rows, int cols, int thresh, int o
     generateKernel(rList, nList, 5, (float) (5.85 * patternScale),
             (float) (8.2 * patternScale));
 
-    newArray(keypointsG, maxPointNow, 1);
-    newArray(kscalesG, maxPointNow, 1);
+    newArray(keypointsG, maxPointNow, 1,streamG);
+    newArray(kscalesG, maxPointNow, 1,streamG);
 
-    newArray(kpScoreG, maxPointNow, 1);
-    newArray(kpSizeG, maxPointNow, 1);
+    newArray(kpScoreG, maxPointNow, 1,streamG);
+    newArray(kpSizeG, maxPointNow, 1,streamG);
 
 
     unsigned char* temp;
 
-    descriptorsG = PtrStepSzb(1, true, 1, maxPointNow * strings_, temp,
+    descriptorsG = PtrStepSzb(streamG,1, true, 1, maxPointNow * strings_, temp,
             maxPointNow * strings_);
 
     int* temp1;
-    _integralG = PtrStepSzi(1, true, rows + 1, cols + 1, temp1, cols + 1);
+    _integralG = PtrStepSzi( streamG,1, true, rows + 1, cols + 1, temp1, cols + 1);
 
-    newArray( valuesInG, sizeof(int)*maxPointNow*points_,0 );
-    newArray( thetaG, sizeof(int)*maxPointNow,0 );
+    newArray( valuesInG, sizeof(int)*maxPointNow*points_,0,streamG );
 }
 
 #endif /* BRISKSCALESPACE_CUH_ */
