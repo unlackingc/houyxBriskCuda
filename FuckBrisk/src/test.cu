@@ -205,7 +205,7 @@ int main() {
 
 	//pouta(a.thetaG,size.x,"hehe: ");
 	int allIs0 = 1;
-	for( int i = 0; i < size.y; i ++ )
+/*	for( int i = 0; i < size.y; i ++ )
 	{
 		//if( i < 10 )
 		cout << "des: " << i << "----";
@@ -218,11 +218,11 @@ int main() {
 			}
 			//if( i < 10)
 			cout << (int)(descriptors.at<uchar>(i,j))<<" ";
-/*			if(  (int)(descriptors.at<uchar>(i,j)) == 255 )
+			if(  (int)(descriptors.at<uchar>(i,j)) == 255 )
 			{
 				//cout << "des: " << i << "----" << j << endl;
 				return 1;
-			}*/
+			}
 		}
 		cout << endl;
 
@@ -234,7 +234,7 @@ int main() {
 				return 1;
 			}
 		}
-	}
+	}*/
 
 
 	//画图显示

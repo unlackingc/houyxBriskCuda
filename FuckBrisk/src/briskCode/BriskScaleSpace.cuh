@@ -2504,9 +2504,11 @@ int2 BRISK_Impl::computeDescriptorsAndOrOrientation(PtrStepSzb _image,
 
     int temp = 0;
 
-    int divToGridY = 32;
-	dim3 block0(32/divToGridY, 1);
-	dim3 grid0((ksize + 32 - 1) / 32, divToGridY);
+    int mp = 128;
+    //int divToGridY = 32;
+    int divToGridY0 = 1;
+	dim3 block0(mp/divToGridY0, 1);
+	dim3 grid0((ksize + mp - 1) / mp, divToGridY0);
 
     generateDesDeleteBorder<<<grid0, block0>>>(*this, ksize,
             keypoints, kpSize, kpScore, _image, descriptors, doDescriptors, doOrientation,
@@ -2519,17 +2521,18 @@ int2 BRISK_Impl::computeDescriptorsAndOrOrientation(PtrStepSzb _image,
 			cudaMemcpyAsync(&temp, counter_ptr, sizeof(unsigned int),
 					cudaMemcpyDeviceToHost)); //todo: change to no-async?
 
-    //int divToGridY1 = 2;
-	dim3 block1(32/divToGridY, points_);
-	dim3 grid1((ksize + 32 - 1) / 32, divToGridY);
+    int divToGridY1 = 8;
+	dim3 block1(mp/divToGridY1, points_);
+	dim3 grid1((ksize + mp - 1) / mp, divToGridY1);
 
 	//(ksize + 32 - 1) / 32
     generateDesSmoothedIntensity<<<grid1, block1>>>(0,*this, ksize,
             keypoints, kpSize, kpScore, _image, descriptors, doDescriptors, doOrientation,
             useProvidedKeypoints);
 
-	dim3 block2(32/divToGridY, 1);
-	dim3 grid2((ksize + 32 - 1) / 32, divToGridY);
+    int divToGridY2 = 1;
+	dim3 block2(mp/divToGridY2, 1);
+	dim3 grid2((ksize + mp - 1) / mp, divToGridY2);
 
 
     generateDesKernel<<<grid2, block2>>>(*this, ksize,
@@ -2537,17 +2540,18 @@ int2 BRISK_Impl::computeDescriptorsAndOrOrientation(PtrStepSzb _image,
             useProvidedKeypoints);
 
     //int divToGridY4 = 2;
-	dim3 block4(32/divToGridY, points_);
-	dim3 grid4((ksize + 32 - 1) / 32, divToGridY);
+    int divToGridY4 = 8;
+	dim3 block4(mp/divToGridY4, points_);
+	dim3 grid4((ksize + mp - 1) / mp, divToGridY4);
 
 	//(ksize + 32 - 1) / 32
     generateDesSmoothedIntensity<<<grid4, block4>>>(1, *this, ksize,
             keypoints, kpSize, kpScore, _image, descriptors, doDescriptors, doOrientation,
             useProvidedKeypoints);
 
-    //int divToGridY3 = 32;
-	dim3 block3(32/divToGridY, this->noShortPairs_/32);//todo : check 512/32整除
-	dim3 grid3((ksize + 32 - 1) / 32, divToGridY);
+    int divToGridY3 = 4;
+	dim3 block3(mp/divToGridY3, this->noShortPairs_/32);//todo : check 512/32整除
+	dim3 grid3((ksize + mp - 1) / mp, divToGridY3);
 	CUDA_CHECK_RETURN(cudaMemsetAsync(descriptors, 0, sizeof(unsigned char)*strings_*ksize));
 
     generateDesKernelFinal<<<grid3, block3>>>(*this, ksize,
