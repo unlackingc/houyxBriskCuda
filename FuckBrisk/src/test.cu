@@ -78,7 +78,7 @@ void copyDescritporDebug( PtrStepSzb desGpu, cv::Mat& descriptor, int size, int 
 int main() {
 
 	//读取图片
-	cv::Mat testImg = cv::imread("data/test2.jpg");
+	cv::Mat testImg = cv::imread("data/test1.jpg");
 	if (!testImg.data) {
 		cout << "load data failed" << endl;
 	}
@@ -140,13 +140,13 @@ int main() {
 
 
 	//把GPU的图片读出来显示，确保无误
-	cv::Mat retestCpu(testImgGray.rows, testImgGray.cols, CV_8UC1);
+/*	cv::Mat retestCpu(testImgGray.rows, testImgGray.cols, CV_8UC1);
 	dstImage.download(retestCpu);
 	cv::Mat retestCpu1(testImgGray1.rows, testImgGray1.cols, CV_8UC1);
-	dstImage1.download(retestCpu1);
-	cv::imshow("retestCpu", retestCpu);
+	dstImage1.download(retestCpu1);*/
+/*	cv::imshow("retestCpu", retestCpu);
 	cv::imshow("retestCpu1", retestCpu1);
-	cv::waitKey();
+	cv::waitKey();*/
 	cout << "load image done!!" << endl;
 
 
@@ -163,7 +163,7 @@ int main() {
 	cudaEventCreate(&stop);
 	cudaEventRecord(start, 0);
 
-	for( int i = 0; i < 10000; i ++ )
+	for( int i = 0; i < 1000; i ++ )
 	{
 		size = a.detectAndCompute(imageIn, a.keypointsG, a.kpSizeG, a.kpScoreG,a.descriptorsG,false);
 		if(i%50==0)
@@ -189,7 +189,7 @@ int main() {
 	cout << "旋转图特征点数： 去边角前--" << size1.x << " 去掉边角后--" << size1.y << endl;
 
 
-
+/*
 	//把GPU上的特征点copy灰opencv的结构
 	vector<cv::KeyPoint> keypoints;
 	copyToKeyPoint(keypoints, size.x, a.keypointsG, a.kpSizeG, a.kpScoreG);
@@ -201,7 +201,7 @@ int main() {
 	copyDescritpor( a1.descriptorsG, descriptors1, size1.y, a1.strings_ );
 
 
-/*	for( int i = 0; i < size.y; i ++ )
+	for( int i = 0; i < size.y; i ++ )
 	{
 		cout << "des: " << i << "----";
 		for( int j = 0; j < a.strings_; j ++ )
@@ -209,7 +209,7 @@ int main() {
 			cout << (int)(descriptors.at<uchar>(i,j))<<" ";
 		}
 		cout << endl;
-	}*/
+	}
 
 
 	//画图显示
@@ -266,9 +266,9 @@ int main() {
     }
     cv::Mat img_match;
     cv::drawMatches(testImgGray, keypoints, testImgGray1, keypoints1, matches, img_match);
-    cout<<"number of matched points: "<<matches.size()<<endl;
-    cv::imshow("matches",img_match);
-    cv::waitKey(0);
+    cout<<"number of matched points: "<<matches.size()<<endl;*/
+/*    cv::imshow("matches",img_match);
+    cv::waitKey(0);*/
 
 
 	cout << "end!!" << endl;
