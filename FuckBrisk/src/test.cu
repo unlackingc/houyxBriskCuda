@@ -140,13 +140,13 @@ int main() {
 
 
 	//把GPU的图片读出来显示，确保无误
-/*	cv::Mat retestCpu(testImgGray.rows, testImgGray.cols, CV_8UC1);
+	cv::Mat retestCpu(testImgGray.rows, testImgGray.cols, CV_8UC1);
 	dstImage.download(retestCpu);
 	cv::Mat retestCpu1(testImgGray1.rows, testImgGray1.cols, CV_8UC1);
 	dstImage1.download(retestCpu1);
 	cv::imshow("retestCpu", retestCpu);
 	cv::imshow("retestCpu1", retestCpu1);
-	cv::waitKey();*/
+	cv::waitKey();
 	cout << "load image done!!" << endl;
 
 
@@ -163,10 +163,10 @@ int main() {
 	cudaEventCreate(&stop);
 	cudaEventRecord(start, 0);
 
-	for( int i = 0; i < 500; i ++ )
+	for( int i = 0; i < 1000; i ++ )
 	{
 		size = a.detectAndCompute(imageIn, a.keypointsG, a.kpSizeG, a.kpScoreG,a.descriptorsG,false);
-		if(i%50==0)
+		if( i < 10 || (i>=10 && i%50==0))
 		cout << "caled: " << i << endl;
 	}
 	size = a.detectAndCompute(imageIn, a.keypointsG, a.kpSizeG, a.kpScoreG,a.descriptorsG,false);
@@ -189,8 +189,10 @@ int main() {
 	cout << "旋转图特征点数： 去边角前--" << size1.x << " 去掉边角后--" << size1.y << endl;
 
 
+//debug
+	CUDA_CHECK_RETURN(cudaDeviceSynchronize());
 
-	/*//把GPU上的特征点copy灰opencv的结构
+	//把GPU上的特征点copy灰opencv的结构
 	vector<cv::KeyPoint> keypoints;
 	copyToKeyPoint(keypoints, size.x, a.keypointsG, a.kpSizeG, a.kpScoreG);
 	vector<cv::KeyPoint> keypoints1;
@@ -201,12 +203,21 @@ int main() {
 	copyDescritpor( a1.descriptorsG, descriptors1, size1.y, a1.strings_ );
 
 
+	pouta(a.thetaG,size.x,"hehe: ");
+
 	for( int i = 0; i < size.y; i ++ )
 	{
+		//if( i < 10 )
 		cout << "des: " << i << "----";
 		for( int j = 0; j < a.strings_; j ++ )
 		{
+			//if( i < 10)
 			cout << (int)(descriptors.at<uchar>(i,j))<<" ";
+/*			if(  (int)(descriptors.at<uchar>(i,j)) == 255 )
+			{
+				//cout << "des: " << i << "----" << j << endl;
+				return 1;
+			}*/
 		}
 		cout << endl;
 	}
@@ -264,13 +275,15 @@ int main() {
     		i --;
     	}
     }
+
+    cout << size.y << " " << keypoints.size() << "\n" << size1.y << " " << keypoints1.size() << endl;
     cv::Mat img_match;
     cv::drawMatches(testImgGray, keypoints, testImgGray1, keypoints1, matches, img_match);
     cout<<"number of matched points: "<<matches.size()<<endl;
     cv::imshow("matches",img_match);
-    cv::waitKey(0);*/
+    cv::waitKey(0);
 
-
+    cout << a.noLongPairs_ <<  " " << a.noShortPairs_ << endl;
 	cout << "end!!" << endl;
 	return 0;
 }

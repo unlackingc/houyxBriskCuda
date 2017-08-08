@@ -308,6 +308,7 @@ public:
     PtrStepSzb descriptorsG;
 
     int* valuesInG;
+    int* thetaG;
 };
 
 const float BRISK_Impl::basicSize_ = 12.0f;
@@ -2020,6 +2021,9 @@ __host__ BRISK_Impl::~BRISK_Impl() {
         CUDA_CHECK_RETURN(cudaFree(sizeList_));
         CUDA_CHECK_RETURN(cudaFree(_integralG.data));
         CUDA_CHECK_RETURN(cudaFree(valuesInG));
+        CUDA_CHECK_RETURN(cudaFree(thetaG));
+
+
 
         if( useSelfArray )
         {
@@ -2070,6 +2074,7 @@ __device__ inline int smoothedIntensity(BRISK_Impl& briskImpl,
     const BRISK_Impl::BriskPatternPoint& briskPoint =
             briskImpl.patternPoints_[scale * briskImpl.n_rot_
                     * briskImpl.points_ + rot * briskImpl.points_ + point];
+
     const float xf = briskPoint.x + key_x;
     const float yf = briskPoint.y + key_y;
     const int x = int(xf);
@@ -2095,6 +2100,10 @@ __device__ inline int smoothedIntensity(BRISK_Impl& briskImpl,
                 + r_x * r_y * ptr[step] + r_x_1 * r_y * ptr[step + 1];
         return (ret_val + 512) / 1024;
     }
+
+
+
+
     // this is the standard case (simple, not speed optimized yet):
 
     // scaling:
@@ -2103,6 +2112,7 @@ __device__ inline int smoothedIntensity(BRISK_Impl& briskImpl,
 
     // the integral image is larger:
     const int integralcols = integral.step;
+
 
     // calculate borders
     const float x_1 = xf - sigma_half;
@@ -2114,6 +2124,8 @@ __device__ inline int smoothedIntensity(BRISK_Impl& briskImpl,
     const int y_top = int(y_1 + 0.5);
     const int x_right = int(x1 + 0.5);
     const int y_bottom = int(y1 + 0.5);
+
+
 
     // overlap area - multiplication factors:
     const float r_x_1 = float(x_left) - x_1 + 0.5f;
@@ -2130,6 +2142,10 @@ __device__ inline int smoothedIntensity(BRISK_Impl& briskImpl,
     const int r_y_1_i = (int) (r_y_1 * scaling);
     const int r_x1_i = (int) (r_x1 * scaling);
     const int r_y1_i = (int) (r_y1 * scaling);
+
+
+
+
 
     if (dx + dy > 2) {
 
@@ -2219,14 +2235,15 @@ __device__ inline int smoothedIntensity(BRISK_Impl& briskImpl,
 }
 
 
-__global__ void generateDesKernel(BRISK_Impl briskImpl, const int ksize,
+__global__ void generateDesDeleteBorder(BRISK_Impl briskImpl, const int ksize,
         float2* keypoints, float* kpSize, float* kpScore, PtrStepSzb _image, PtrStepSzb descriptors,
-        bool doDescriptors, bool doOrientation, bool useProvidedKeypoints) {
-
-    const int k = threadIdx.x + blockIdx.x * blockDim.x;
-    float angle = 0;
-    unsigned int ind = 0;
-    unsigned char* ptr;
+        bool doDescriptors, bool doOrientation, bool useProvidedKeypoints)
+{
+	const int blockId = blockIdx.y + blockIdx.x * gridDim.y;
+    const int blockBase = blockId * blockDim.x * blockDim.y;
+    const int threadId = blockBase + threadIdx.x * blockDim.y + threadIdx.y;
+	const int k = (blockBase + threadIdx.x * blockDim.y)/blockDim.y;//todo: 这种计算法下，必须保证blockDim.y=1
+	const int k_i = threadIdx.y;
 
     if (k >= ksize) {
         return;
@@ -2253,53 +2270,93 @@ __global__ void generateDesKernel(BRISK_Impl briskImpl, const int ksize,
             (float) border_y, keypoints[k])) {
         keypoints[k] = make_float2(-1, -1);
         briskImpl.kscalesG[k] = -1;   //mark as bad.
-
-        return;
     } else {
-        ind = atomicInc(&g_counter1, (unsigned int) (-1));
-        ptr = descriptors.data + (ind) * briskImpl.strings_;
+        atomicInc(&g_counter1, (unsigned int) (-1));
+    }
+}
+
+__global__ void generateDesSmoothedIntensity(float theta,BRISK_Impl briskImpl, const int ksize,
+        float2* keypoints, float* kpSize, float* kpScore, PtrStepSzb _image, PtrStepSzb descriptors,
+        bool doDescriptors, bool doOrientation, bool useProvidedKeypoints)
+{
+	const int blockId = blockIdx.y + blockIdx.x * gridDim.y;
+    const int blockBase = blockId * blockDim.x * blockDim.y;
+    const int threadId = blockBase + threadIdx.x * blockDim.y + threadIdx.y;
+	const int k = (blockBase + threadIdx.x * blockDim.y)/blockDim.y;//todo: 这种计算法下，必须保证blockDim.y=Points_
+	const int k_i = threadIdx.y;
+
+    if (k >= ksize || keypoints[k].x == -1 || keypoints[k].y == -1 || briskImpl.kscalesG[k] == -1) {
+        return;
     }
 
-    int t1;
-    int t2;
-
-    // the feature orientation
-
-    float2 kp = keypoints[k];
+    int* valuesIn = briskImpl.valuesInG + k * briskImpl.points_;
+    int* pvalues = valuesIn +  k_i;//todo: blockDim.y = briskImpl.points_
     const int& scale1 = briskImpl.kscalesG[k];
-
-    int* valuesIn = briskImpl.valuesInG + ind * briskImpl.points_;
-
-    int* pvalues = valuesIn;
+    float2 kp = keypoints[k];
     const float& x = kp.x;
     const float& y = kp.y;
 
     //为了计算梯度方向只能先算一遍灰度值
-    if (doOrientation) {
+    //if (doOrientation) {
 
         // get the gray values in the unrotated pattern
-        for (unsigned int i = 0; i < briskImpl.points_; i++) {
-            *(pvalues++) = smoothedIntensity(briskImpl, _image,
-                    briskImpl._integralG, x, y, scale1, 0, i);
-        }
-        //return;
-        //计算梯度方向
-        int direction0 = 0;
-        int direction1 = 0;
-        // now iterate through the long pairings
-        const BRISK_Impl::BriskLongPair* max = briskImpl.longPairs_
-                + briskImpl.noLongPairs_;
-        for (BRISK_Impl::BriskLongPair* iter = briskImpl.longPairs_; iter < max;
-                ++iter) {
-            t1 = *(valuesIn + iter->i);
-            t2 = *(valuesIn + iter->j);
-            const int delta_t = (t1 - t2);
-            // update the direction:
-            const int tmp0 = delta_t * (iter->weighted_dx) / 1024;
-            const int tmp1 = delta_t * (iter->weighted_dy) / 1024;
-            direction0 += tmp0;
-            direction1 += tmp1;
-        }
+        //for (unsigned int i = 0; i < briskImpl.points_; i++) {
+    if( theta == 0  )
+    {
+    	*(pvalues) = smoothedIntensity(briskImpl, _image,
+			briskImpl._integralG, x, y, scale1, 0, k_i);
+    }
+    else
+    {
+    	*(pvalues) = smoothedIntensity(briskImpl, _image,
+			briskImpl._integralG, x, y, scale1, briskImpl.thetaG[k], k_i);
+    }
+}
+
+__global__ void generateDesKernel(BRISK_Impl briskImpl, const int ksize,
+        float2* keypoints, float* kpSize, float* kpScore, PtrStepSzb _image, PtrStepSzb descriptors,
+        bool doDescriptors, bool doOrientation, bool useProvidedKeypoints) {
+
+	const int blockId = blockIdx.y + blockIdx.x * gridDim.y;
+    const int blockBase = blockId * blockDim.x * blockDim.y;
+    const int threadId = blockBase + threadIdx.x * blockDim.y + threadIdx.y;
+	const int k = (blockBase + threadIdx.x * blockDim.y)/blockDim.y;//todo: 这种计算法下，必须保证blockDim.y=1
+	const int k_i = threadIdx.y;
+
+    float angle = 0;
+
+    if (k >= ksize || keypoints[k].x == -1 || keypoints[k].y == -1 || briskImpl.kscalesG[k] == -1) {
+        return;
+    }
+
+    // the feature orientation
+
+/*    float2 kp = keypoints[k];
+    const int& scale1 = briskImpl.kscalesG[k];
+    const float& x = kp.x;
+    const float& y = kp.y;*/
+
+    //return;
+	//计算梯度方向
+	int direction0 = 0;
+	int direction1 = 0;
+	int t1 = 0;
+	int t2 = 0;
+    int* valuesIn = briskImpl.valuesInG + k * briskImpl.points_;
+	// now iterate through the long pairings
+	const BRISK_Impl::BriskLongPair* max = briskImpl.longPairs_
+			+ briskImpl.noLongPairs_;
+	for (BRISK_Impl::BriskLongPair* iter = briskImpl.longPairs_; iter < max;
+			++iter) {
+		t1 = *(valuesIn + iter->i);
+		t2 = *(valuesIn + iter->j);
+		const int delta_t = (t1 - t2);
+		// update the direction:
+		const int tmp0 = delta_t * (iter->weighted_dx) / 1024;
+		const int tmp1 = delta_t * (iter->weighted_dy) / 1024;
+		direction0 += tmp0;
+		direction1 += tmp1;
+	}
 
         angle = (float) (atan2((float) direction1, (float) direction0) / CV_PI
                 * 180.0);    //tod: check if right
@@ -2308,7 +2365,7 @@ __global__ void generateDesKernel(BRISK_Impl briskImpl, const int ksize,
             if (angle < 0)
                 angle += 360.f;
         }
-    }
+    //}
 
     if (!doDescriptors)
         return;
@@ -2325,49 +2382,81 @@ __global__ void generateDesKernel(BRISK_Impl briskImpl, const int ksize,
             theta -= briskImpl.n_rot_;
     }
 
+
+
+    briskImpl.thetaG[k] = theta;
+
     if (angle < 0)
         angle += 360.f;
 
     // now also extract the stuff for the actual direction:
     // let us compute the smoothed values
-    int shifter = 0;
-
     //unsigned int mean=0;
-    pvalues = valuesIn;
     // get the gray values in the rotated pattern
 
-    for (unsigned int i = 0; i < briskImpl.points_; i++) {
+/*    for (unsigned int i = 0; i < briskImpl.points_; i++) {
         *(pvalues++) = smoothedIntensity(briskImpl, _image,
                 briskImpl._integralG, x, y, scale1, theta, i);
+    }*/
+
+
+
+
+    //free(valuesIn);
+}
+
+__global__ void generateDesKernelFinal(BRISK_Impl briskImpl, const int ksize,
+        float2* keypoints, float* kpSize, float* kpScore, PtrStepSzb _image, PtrStepSzb descriptors,
+        bool doDescriptors, bool doOrientation, bool useProvidedKeypoints)
+{
+	const int blockId = blockIdx.y + blockIdx.x * gridDim.y;
+    const int blockBase = blockId * blockDim.x * blockDim.y;
+    const int threadId = blockBase + threadIdx.x * blockDim.y + threadIdx.y;
+	const int k = (blockBase + threadIdx.x * blockDim.y)/blockDim.y;//todo: 这种计算法下，必须保证blockDim.y=shortPair/(32)
+	const int k_i = threadIdx.y;
+
+    if (k >= ksize || keypoints[k].x == -1 || keypoints[k].y == -1 || briskImpl.kscalesG[k] == -1) {
+        return;
     }
 
+    int* valuesIn = briskImpl.valuesInG + k * briskImpl.points_;
 
+    //unsigned int ind = atomicInc(&g_counter1, (unsigned int) (-1));
+    unsigned char* ptr = descriptors.data + (k) * briskImpl.strings_;
+
+    briskImpl.thetaG[threadId] = k;
+
+
+    int t1;
+    int t2;
+
+    int shifter = 0;
     //最终计算灰度
     // now iterate through all the pairings
     unsigned int* ptr2 = (unsigned int*) ptr;
-    //*ptr2 = 0;//todo: check if right
+    ptr2 = ptr2 + k_i;
 
-    const BRISK_Impl::BriskShortPair* max = briskImpl.shortPairs_
-            + briskImpl.noShortPairs_;
-    for (BRISK_Impl::BriskShortPair* iter = briskImpl.shortPairs_; iter < max;
+
+    const BRISK_Impl::BriskShortPair* max1 = briskImpl.shortPairs_
+            + (1+k_i)*32;//todo: 整除隐患
+    for (BRISK_Impl::BriskShortPair* iter = briskImpl.shortPairs_ + k_i*32; iter < max1;
             ++iter) {
         t1 = *(valuesIn + iter->i);
         t2 = *(valuesIn + iter->j);
         if (t1 > t2) {
             *ptr2 |= ((1) << shifter);
-
         } // else already initialized with zero
           // take care of the iterators:
         ++shifter;
-        if (shifter == 32) {
+/*        if (shifter == 32) {
             shifter = 0;
             ++ptr2;
             //*ptr2 = 0;//todo: check if right
-        }
+        }*/
     }
-
-    //free(valuesIn);
 }
+
+
 
 
 void integral(PtrStepSzb _image, PtrStepSzi ret) {
@@ -2408,24 +2497,65 @@ int2 BRISK_Impl::computeDescriptorsAndOrOrientation(PtrStepSzb _image,
     int ksize = keyPointsCount;
 
     void* counter_ptr;
+
     CUDA_CHECK_RETURN(cudaGetSymbolAddress(&counter_ptr, g_counter1));
 
     CUDA_CHECK_RETURN(cudaMemsetAsync(counter_ptr, 0, sizeof(unsigned int)));
 
     //debug
-    CUDA_CHECK_RETURN(cudaMemsetAsync(descriptors, 0, sizeof(unsigned char)*strings_*ksize));
+    CUDA_CHECK_RETURN(cudaMemset(this->thetaG, 0, sizeof(int)*maxPointNow));
 
+    int temp = 0;
 
-    generateDesKernel<<<(ksize < 32 ? 32 : ksize) / 32 + 1, 32>>>(*this, ksize,
+    int divToGridY = 32;
+	dim3 block0(32/divToGridY, 1);
+	dim3 grid0((ksize + 32 - 1) / 32, divToGridY);
+
+    generateDesDeleteBorder<<<grid0, block0>>>(*this, ksize,
             keypoints, kpSize, kpScore, _image, descriptors, doDescriptors, doOrientation,
             useProvidedKeypoints);
 
-    CUDA_CHECK_RETURN(cudaGetLastError());
-    int temp;
-    CUDA_CHECK_RETURN(
-            cudaMemcpyAsync(&temp, counter_ptr, sizeof(unsigned int),
-                    cudaMemcpyDeviceToHost)); //todo: change to no-async?
 
+    /*CUDA_CHECK_RETURN(
+    			cudaDeviceSynchronize());*/
+	CUDA_CHECK_RETURN(
+			cudaMemcpyAsync(&temp, counter_ptr, sizeof(unsigned int),
+					cudaMemcpyDeviceToHost)); //todo: change to no-async?
+
+    //int divToGridY1 = 2;
+	dim3 block1(32/divToGridY, points_);
+	dim3 grid1((ksize + 32 - 1) / 32, divToGridY);
+
+	//(ksize + 32 - 1) / 32
+    generateDesSmoothedIntensity<<<grid1, block1>>>(0,*this, ksize,
+            keypoints, kpSize, kpScore, _image, descriptors, doDescriptors, doOrientation,
+            useProvidedKeypoints);
+
+	dim3 block2(32/divToGridY, 1);
+	dim3 grid2((ksize + 32 - 1) / 32, divToGridY);
+
+
+    generateDesKernel<<<grid2, block2>>>(*this, ksize,
+            keypoints, kpSize, kpScore, _image, descriptors, doDescriptors, doOrientation,
+            useProvidedKeypoints);
+
+    //int divToGridY4 = 2;
+	dim3 block4(32/divToGridY, points_);
+	dim3 grid4((ksize + 32 - 1) / 32, divToGridY);
+
+	//(ksize + 32 - 1) / 32
+    generateDesSmoothedIntensity<<<grid4, block4>>>(1, *this, ksize,
+            keypoints, kpSize, kpScore, _image, descriptors, doDescriptors, doOrientation,
+            useProvidedKeypoints);
+
+    //int divToGridY3 = 32;
+	dim3 block3(32/divToGridY, this->noShortPairs_/32);//todo : check 512/32整除
+	dim3 grid3((ksize + 32 - 1) / 32, divToGridY);
+	CUDA_CHECK_RETURN(cudaMemsetAsync(descriptors, 0, sizeof(unsigned char)*strings_*ksize));
+
+    generateDesKernelFinal<<<grid3, block3>>>(*this, ksize,
+             keypoints, kpSize, kpScore, _image, descriptors, doDescriptors, doOrientation,
+             useProvidedKeypoints);
 
 
     return make_int2(ksize, temp);
@@ -2655,6 +2785,7 @@ BRISK_Impl::BRISK_Impl(bool useSelfArray_, int rows, int cols, int thresh, int o
     _integralG = PtrStepSzi(1, true, rows + 1, cols + 1, temp1, cols + 1);
 
     newArray( valuesInG, sizeof(int)*maxPointNow*points_,0 );
+    newArray( thetaG, sizeof(int)*maxPointNow,0 );
 }
 
 #endif /* BRISKSCALESPACE_CUH_ */
