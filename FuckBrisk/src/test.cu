@@ -12,6 +12,7 @@
 #include <opencv/cv.h>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/core/core.hpp>
+#include <omp.h>
 
 #include <vector>
 
@@ -81,7 +82,8 @@ int main() {
 	#pragma omp parallel for num_threads(10)
 	for( int i = 0; i < 10; i++ )
 	{
-		cout << i << endl;
+		printf( "%d----%d\n", omp_get_thread_num(),i);
+		//cout << omp_get_thread_num() << "-- " <<  << endl;
 	}
 
 	//读取图片
@@ -166,6 +168,22 @@ int main() {
 	//brisk计算特征点
 	BRISK_Impl a(stream1,true,dstImage.rows, dstImage.cols);
 
+
+	const int all = 20;
+	BRISK_Impl* aA[all];
+	cudaStream_t streamA[all];
+	//#pragma omp parallel for num_threads(10)
+	for( int i = 0; i < all; i++ )
+	{
+		cudaStreamCreateWithFlags( &streamA[i], cudaStreamNonBlocking );
+		aA[i] = new BRISK_Impl(streamA[i],true,dstImage.rows, dstImage.cols);
+		aA[i]->detectAndCompute(imageIn, a.keypointsG, a.kpSizeG, a.kpScoreG,a.descriptorsG,false);
+		//printf( "%d----%d\n", omp_get_thread_num(),i);
+		//cout << omp_get_thread_num() << "-- " <<  << endl;
+	}
+
+
+
 	int2 size;
 
 	cudaEvent_t start, stop;
@@ -175,12 +193,25 @@ int main() {
 	cudaEventCreate(&stop);
 	cudaEventRecord(start, 0);
 
-	for( int i = 0; i < 1000; i ++ )
+
+	//
+	for(int j = 0; j < 100; j ++)
+	{
+		//#pragma omp parallel for num_threads(10)
+		for( int i = 0; i < all; i++ )
+		{
+			aA[i]->detectAndCompute(imageIn, a.keypointsG, a.kpSizeG, a.kpScoreG,a.descriptorsG,false);
+			//printf( "%d----%d\n", omp_get_thread_num(),i);
+			//cout << omp_get_thread_num() << "-- " <<  << endl;
+		}
+	}
+
+/*	for( int i = 0; i < 1000; i ++ )
 	{
 		size = a.detectAndCompute(imageIn, a.keypointsG, a.kpSizeG, a.kpScoreG,a.descriptorsG,false);
 		if( i < 10 || (i>=10 && i%50==0))
 		cout << "caled: " << i << endl;
-	}
+	}*/
 	size = a.detectAndCompute(imageIn, a.keypointsG, a.kpSizeG, a.kpScoreG,a.descriptorsG,false);
 	cudaEventRecord(stop, 0);
 	cudaEventSynchronize(stop);

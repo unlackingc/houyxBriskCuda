@@ -112,11 +112,14 @@
 						<toolChain id="com.nvidia.cuda.ide.toolchain.eight_zero.exe.release.1735868256" name="CUDA Toolkit 8.0" superClass="com.nvidia.cuda.ide.toolchain.eight_zero.exe.release">
 							<targetPlatform archList="all" binaryParser="com.nvidia.cuda.ide.elf;com.nvidia.cuda.ide.macho;com.nvidia.cuda.ide.cubin" id="com.nvidia.cuda.ide.targetPlatform.180032009" isAbstract="false" name="Debug Platform" osList="linux,macosx" superClass="com.nvidia.cuda.ide.targetPlatform"/>
 							<builder buildPath="${workspace_loc:/FuckBrisk}/Release" id="com.nvidia.cuda.ide.builder.861326490" keepEnvironmentInBuildfile="false" managedBuildOn="true" name="CUDA Toolkit 8.0 Builder" superClass="com.nvidia.cuda.ide.builder"/>
-							<tool id="nvcc.compiler.base.1561311505" name="NVCC Compiler" superClass="nvcc.compiler.base">
+							<tool command="nvcc" id="nvcc.compiler.base.1561311505" name="NVCC Compiler" superClass="nvcc.compiler.base">
 								<option id="nvcc.compiler.deviceDebug.1736272992" name="Generate device debug information (-G)" superClass="nvcc.compiler.deviceDebug"/>
 								<option id="nvcc.compiler.option.level.128719849" name="Generate host debug information (-g)" superClass="nvcc.compiler.option.level"/>
 								<option defaultValue="nvcc.compiler.optimization.level.most" id="nvcc.compiler.optimization.level.42699209" name="Optimization Level" superClass="nvcc.compiler.optimization.level" valueType="enumerated"/>
 								<option id="nvcc.compiler.pic.343319238" name="Position Independent Code (-fPIC)" superClass="nvcc.compiler.pic"/>
+								<option id="nvcc.compiler.compileroptions.542545416" name="Preprocessor options (-Xcompiler)" superClass="nvcc.compiler.compileroptions" valueType="stringList">
+									<listOptionValue builtIn="false" value="-fopenmp"/>
+								</option>
 								<inputType id="nvcc.compiler.input.cu.57966313" superClass="nvcc.compiler.input.cu"/>
 								<inputType id="nvcc.compiler.input.cpp.617308706" superClass="nvcc.compiler.input.cpp"/>
 								<inputType id="nvcc.compiler.input.c.1036071335" superClass="nvcc.compiler.input.c"/>
@@ -124,6 +127,7 @@
 							<tool id="nvcc.linker.base.1291108854" name="NVCC Linker" superClass="nvcc.linker.base">
 								<option id="nvcc.linker.option.libs.1935347840" name="Libraries (-l)" superClass="nvcc.linker.option.libs" valueType="libs">
 									<listOptionValue builtIn="false" value="opencv_cudabgsegm "/>
+									<listOptionValue builtIn="false" value="gomp"/>
 									<listOptionValue builtIn="false" value="nppc"/>
 									<listOptionValue builtIn="false" value="nppi"/>
 									<listOptionValue builtIn="false" value="opencv_cudaobjdetect "/>
@@ -159,6 +163,9 @@
 									<listOptionValue builtIn="false" value="&quot;${cuda_samples_dir:/ImageProcesser}/7_CUDALibraries/common/FreeImage/lib/linux/x86_64&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${cuda_samples_dir:/ImageProcesser}/7_CUDALibraries/common/FreeImage/lib/linux&quot;"/>
 								</option>
+								<option id="nvcc.linker.option.linkgl.1305346896" name="Link with OpenGL libraries" superClass="nvcc.linker.option.linkgl" value="false" valueType="boolean"/>
+								<option id="nvcc.linker.option.other.1788368585" name="Other options (-Xlinker [option])" superClass="nvcc.linker.option.other" valueType="stringList"/>
+								<option id="nvcc.linker.option.shared.318479917" name="Shared (-shared)" superClass="nvcc.linker.option.shared" value="false" valueType="boolean"/>
 								<inputType id="nvcc.linker.input.429602659" superClass="nvcc.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
 									<additionalInput kind="additionalinput" paths="$(LIBS)"/>
