@@ -306,6 +306,8 @@ public:
     float* kpScoreG;
     PtrStepSzi _integralG;
     PtrStepSzb descriptorsG;
+
+    int* valuesInG;
 };
 
 const float BRISK_Impl::basicSize_ = 12.0f;
@@ -2017,6 +2019,7 @@ __host__ BRISK_Impl::~BRISK_Impl() {
         CUDA_CHECK_RETURN(cudaFree(scaleList_));
         CUDA_CHECK_RETURN(cudaFree(sizeList_));
         CUDA_CHECK_RETURN(cudaFree(_integralG.data));
+        CUDA_CHECK_RETURN(cudaFree(valuesInG));
 
         if( useSelfArray )
         {
@@ -2215,6 +2218,7 @@ __device__ inline int smoothedIntensity(BRISK_Impl& briskImpl,
     return (ret_val + scaling2 / 2) / scaling2;
 }
 
+
 __global__ void generateDesKernel(BRISK_Impl briskImpl, const int ksize,
         float2* keypoints, float* kpSize, float* kpScore, PtrStepSzb _image, PtrStepSzb descriptors,
         bool doDescriptors, bool doOrientation, bool useProvidedKeypoints) {
@@ -2264,7 +2268,8 @@ __global__ void generateDesKernel(BRISK_Impl briskImpl, const int ksize,
     float2 kp = keypoints[k];
     const int& scale1 = briskImpl.kscalesG[k];
 
-    int* valuesIn = new int[briskImpl.points_];
+    int* valuesIn = briskImpl.valuesInG + ind * briskImpl.points_;
+
     int* pvalues = valuesIn;
     const float& x = kp.x;
     const float& y = kp.y;
@@ -2330,10 +2335,12 @@ __global__ void generateDesKernel(BRISK_Impl briskImpl, const int ksize,
     //unsigned int mean=0;
     pvalues = valuesIn;
     // get the gray values in the rotated pattern
+
     for (unsigned int i = 0; i < briskImpl.points_; i++) {
         *(pvalues++) = smoothedIntensity(briskImpl, _image,
                 briskImpl._integralG, x, y, scale1, theta, i);
     }
+
 
     //最终计算灰度
     // now iterate through all the pairings
@@ -2359,8 +2366,9 @@ __global__ void generateDesKernel(BRISK_Impl briskImpl, const int ksize,
         }
     }
 
-    free(valuesIn);
+    //free(valuesIn);
 }
+
 
 void integral(PtrStepSzb _image, PtrStepSzi ret) {
     NppiSize dstSize;
@@ -2605,6 +2613,8 @@ BRISK_Impl::BRISK_Impl(bool useSelfArray_, int rows, int cols, int thresh, int o
         float patternScale) : useSelfArray(useSelfArray_),
         ptrcount(0), briskScaleSpace(octaves_in), isFirstTime(true) {
 
+
+
     threshold = thresh;
     octaves = octaves_in;
 
@@ -2635,6 +2645,7 @@ BRISK_Impl::BRISK_Impl(bool useSelfArray_, int rows, int cols, int thresh, int o
     newArray(kpScoreG, maxPointNow, 1);
     newArray(kpSizeG, maxPointNow, 1);
 
+
     unsigned char* temp;
 
     descriptorsG = PtrStepSzb(1, true, 1, maxPointNow * strings_, temp,
@@ -2642,6 +2653,8 @@ BRISK_Impl::BRISK_Impl(bool useSelfArray_, int rows, int cols, int thresh, int o
 
     int* temp1;
     _integralG = PtrStepSzi(1, true, rows + 1, cols + 1, temp1, cols + 1);
+
+    newArray( valuesInG, sizeof(int)*maxPointNow*points_,0 );
 }
 
 #endif /* BRISKSCALESPACE_CUH_ */

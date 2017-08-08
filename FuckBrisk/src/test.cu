@@ -78,7 +78,7 @@ void copyDescritporDebug( PtrStepSzb desGpu, cv::Mat& descriptor, int size, int 
 int main() {
 
 	//读取图片
-	cv::Mat testImg = cv::imread("data/test1.jpg");
+	cv::Mat testImg = cv::imread("data/test2.jpg");
 	if (!testImg.data) {
 		cout << "load data failed" << endl;
 	}
@@ -143,8 +143,8 @@ int main() {
 /*	cv::Mat retestCpu(testImgGray.rows, testImgGray.cols, CV_8UC1);
 	dstImage.download(retestCpu);
 	cv::Mat retestCpu1(testImgGray1.rows, testImgGray1.cols, CV_8UC1);
-	dstImage1.download(retestCpu1);*/
-/*	cv::imshow("retestCpu", retestCpu);
+	dstImage1.download(retestCpu1);
+	cv::imshow("retestCpu", retestCpu);
 	cv::imshow("retestCpu1", retestCpu1);
 	cv::waitKey();*/
 	cout << "load image done!!" << endl;
@@ -163,7 +163,7 @@ int main() {
 	cudaEventCreate(&stop);
 	cudaEventRecord(start, 0);
 
-	for( int i = 0; i < 1000; i ++ )
+	for( int i = 0; i < 500; i ++ )
 	{
 		size = a.detectAndCompute(imageIn, a.keypointsG, a.kpSizeG, a.kpScoreG,a.descriptorsG,false);
 		if(i%50==0)
@@ -189,8 +189,8 @@ int main() {
 	cout << "旋转图特征点数： 去边角前--" << size1.x << " 去掉边角后--" << size1.y << endl;
 
 
-/*
-	//把GPU上的特征点copy灰opencv的结构
+
+	/*//把GPU上的特征点copy灰opencv的结构
 	vector<cv::KeyPoint> keypoints;
 	copyToKeyPoint(keypoints, size.x, a.keypointsG, a.kpSizeG, a.kpScoreG);
 	vector<cv::KeyPoint> keypoints1;
@@ -266,8 +266,8 @@ int main() {
     }
     cv::Mat img_match;
     cv::drawMatches(testImgGray, keypoints, testImgGray1, keypoints1, matches, img_match);
-    cout<<"number of matched points: "<<matches.size()<<endl;*/
-/*    cv::imshow("matches",img_match);
+    cout<<"number of matched points: "<<matches.size()<<endl;
+    cv::imshow("matches",img_match);
     cv::waitKey(0);*/
 
 
