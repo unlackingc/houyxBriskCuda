@@ -203,14 +203,19 @@ int main() {
 	copyDescritpor( a1.descriptorsG, descriptors1, size1.y, a1.strings_ );
 
 
-	pouta(a.thetaG,size.x,"hehe: ");
-
+	//pouta(a.thetaG,size.x,"hehe: ");
+	int allIs0 = 1;
 	for( int i = 0; i < size.y; i ++ )
 	{
 		//if( i < 10 )
 		cout << "des: " << i << "----";
+		allIs0 = 1;
 		for( int j = 0; j < a.strings_; j ++ )
 		{
+			if( (int)(descriptors.at<uchar>(i,j))!=0 )
+			{
+				allIs0 = 0;
+			}
 			//if( i < 10)
 			cout << (int)(descriptors.at<uchar>(i,j))<<" ";
 /*			if(  (int)(descriptors.at<uchar>(i,j)) == 255 )
@@ -220,6 +225,15 @@ int main() {
 			}*/
 		}
 		cout << endl;
+
+		if(allIs0)
+		{
+			if(keypoints[i].pt.x != -1)
+			{
+				cout << "fuck something is wrong" << endl;
+				return 1;
+			}
+		}
 	}
 
 

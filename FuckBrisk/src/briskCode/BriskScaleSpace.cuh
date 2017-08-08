@@ -2502,9 +2502,6 @@ int2 BRISK_Impl::computeDescriptorsAndOrOrientation(PtrStepSzb _image,
 
     CUDA_CHECK_RETURN(cudaMemsetAsync(counter_ptr, 0, sizeof(unsigned int)));
 
-    //debug
-    CUDA_CHECK_RETURN(cudaMemset(this->thetaG, 0, sizeof(int)*maxPointNow));
-
     int temp = 0;
 
     int divToGridY = 32;
