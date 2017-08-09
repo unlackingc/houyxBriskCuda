@@ -1,28 +1,111 @@
-/*
- * BriskScaleSpace.cuh
- *
- *  Created on: 2017年7月31日
- *      Author: houyx
- */
 
-#ifndef BRISKSCALESPACE_CUH_
-#define BRISKSCALESPACE_CUH_
-
-#include "../libsrc/AgastCuda/AgastCuda.cuh"
+#include "../includes/BriskScaleSpace.h"
 #include "npp.h"
+#include "../includes/globalValues.h"
 
-class BriskLayerOne {
+__device__ unsigned int g_counter1;
 
-	cudaStream_t streamG;
+template<typename T> __host__  T * newArray( T *& ptr, int size, bool ifset, cudaStream_t& stream_ )
+{
+    CUDA_CHECK_RETURN( cudaMalloc((void**)&ptr, sizeof(T) * size));
+    if( ifset )
+    {
+        CUDA_CHECK_RETURN(cudaMemsetAsync( ptr, 0, sizeof(T)*size, stream_ ));
+    }
 
-public:
-    int ptrcount;
+    return ptr;
+}
 
-    bool hasFuckReset;
+template<int>  int* 										newArray(int* ptr, int size, bool ifset, cudaStream_t& stream_);
+template<unsigned int>  unsigned int* 							newArray(unsigned int* ptr, int size, bool ifset, cudaStream_t& stream_);
+template<char>  char* 									newArray(char* ptr, int size, bool ifset, cudaStream_t& stream_);
+template<unsigned char>  unsigned char* 							newArray(unsigned char* ptr, int size, bool ifset, cudaStream_t& stream_);
 
-    bool saveTheOriginImage;
+void newArray( BRISK_Impl::BriskPatternPoint *& ptr, int size, bool ifset, cudaStream_t& stream_ )
+{
+    CUDA_CHECK_RETURN( cudaMalloc((void**)&ptr, sizeof(BRISK_Impl::BriskPatternPoint) * size));
+    if( ifset )
+    {
+        CUDA_CHECK_RETURN(cudaMemsetAsync( ptr, 0, sizeof(BRISK_Impl::BriskPatternPoint)*size, stream_ ));
+    }
 
-    ~BriskLayerOne() {
+    return;
+}
+
+void newArray( BRISK_Impl::BriskLongPair *& ptr, int size, bool ifset, cudaStream_t& stream_ )
+{
+    CUDA_CHECK_RETURN( cudaMalloc((void**)&ptr, sizeof(BRISK_Impl::BriskLongPair) * size));
+    if( ifset )
+    {
+        CUDA_CHECK_RETURN(cudaMemsetAsync( ptr, 0, sizeof(BRISK_Impl::BriskLongPair)*size, stream_ ));
+    }
+
+    return;
+}
+
+void newArray( BRISK_Impl::BriskShortPair *& ptr, int size, bool ifset, cudaStream_t& stream_ )
+{
+    CUDA_CHECK_RETURN( cudaMalloc((void**)&ptr, sizeof(BRISK_Impl::BriskShortPair) * size));
+    if( ifset )
+    {
+        CUDA_CHECK_RETURN(cudaMemsetAsync( ptr, 0, sizeof(BRISK_Impl::BriskShortPair)*size, stream_ ));
+    }
+
+    return;
+}
+
+float * newArray( float *& ptr, int size, bool ifset, cudaStream_t& stream_ )
+{
+    CUDA_CHECK_RETURN( cudaMalloc((void**)&ptr, sizeof(float) * size));
+    if( ifset )
+    {
+        CUDA_CHECK_RETURN(cudaMemsetAsync( ptr, 0, sizeof(float)*size, stream_ ));
+    }
+
+    return ptr;
+}
+
+
+BRISK_Impl::BRISK_Impl(const BRISK_Impl& c) :briskScaleSpace(c.briskScaleSpace) { //todo: check if right
+        *this = c;
+        ptrcount = c.ptrcount + 1;
+        briskScaleSpace.ptrcount = c.briskScaleSpace.ptrcount + 1;
+
+        for (int i = 0; i < layerExpected; i++) {
+            briskScaleSpace.pyramid_[i].ptrcount =
+                    c.briskScaleSpace.pyramid_[i].ptrcount + 1;
+        }
+    }
+
+BriskScaleSpace::BriskScaleSpace(const BriskScaleSpace& c) {
+        *this = c;
+        ptrcount = c.ptrcount + 1;
+
+        for (int i = 0; i < layerExpected; i++) {
+            pyramid_[i].ptrcount++;
+        }
+    }
+
+BriskScaleSpace::~BriskScaleSpace() {
+        if (ptrcount == 0) {
+            //cout << "got me in ~BriskLayerOne" << endl;
+            CUDA_CHECK_RETURN(cudaFree(scoreTemp));
+            for (int i = 0; i < layerExpected; i++) {
+
+                CUDA_CHECK_RETURN(cudaFree(kpsLoc[i]));
+            }
+        }
+    }
+
+BriskLayerOne::BriskLayerOne(const BriskLayerOne& c) :
+            agast(c.agast) {
+        *this = c;
+
+        ptrcount = c.ptrcount + 1;
+    }
+
+
+BriskLayerOne::~BriskLayerOne() {
 
         if (ptrcount == 0 && hasFuckReset) {
             //cout << "got me in ~BriskLayerOne" << endl;
@@ -34,295 +117,11 @@ public:
         }
     }
 
-    BriskLayerOne(const BriskLayerOne& c) :
-            agast(c.agast) {
-        *this = c;
 
-        ptrcount = c.ptrcount + 1;
-    }
-
-    struct CommonParams {
-        static const int HALFSAMPLE = 0;
-        static const int TWOTHIRDSAMPLE = 1;
-    };
-
-    Agast agast;
-    PtrStepSzb img_;
-    PtrStepSzi scores_;
-
-    //中间值数组
-    short2* locTemp;
-
-    float scale_;
-    float offset_;
-
-    // accessors
-    __device__ __host__ inline const PtrStepSzb&
-    img() const {
-        return img_;
-    }
-
-    __device__ __host__ inline const PtrStepSzi&
-    scores() const {
-        return scores_;
-    }
-
-    __device__ __host__ inline float scale() const {
-        return scale_;
-    }
-
-    __device__ __host__ inline float offset() const {
-        return offset_;
-    }
-
-    int
-    getAgastPoints(int threshold, short2* keypoints, float* scores);
-
-    __device__ inline int
-    getAgastScore(const int x, const int y, int threshold) const;
-
-    __device__ inline int
-    getAgastScore_5_8(const int x, const int y, int threshold) const;
-
-    __device__ inline int
-    getAgastScore(float xf, float yf, int threshold_in,
-            float scale_in = 1.0f) const;
-
-    __device__ inline int
-    value(const PtrStepSzi mat, float xf, float yf, float scale_in) const;
-
-    __host__ void resize2(bool isFisrtTime, const PtrStepSzb& srcimg,
-            PtrStepSzb& dstimg);
-
-    __host__ void resize3_2(bool isFisrtTime, const PtrStepSzb& srcimg,
-            PtrStepSzb& dstimg);
-
-    __host__ inline void
-    halfsample(bool isFisrtTime, const PtrStepSzb& srcimg, PtrStepSzb& dstimg);
-
-    __host__ inline void
-    twothirdsample(bool isFisrtTime, const PtrStepSzb& srcimg,
-            PtrStepSzb& dstimg);
-
-    void FuckReset(cudaStream_t& stream1,bool isFisrtTime, const PtrStepSzb& img_in, float scale =
-            1.0f, float offset = 0.0f);
-
-    void FuckReset(cudaStream_t& stream1,bool isFisrtTime, const BriskLayerOne& layer, int mode);
-
-    BriskLayerOne() :
+BriskLayerOne::BriskLayerOne() :
             agast(640), ptrcount(0), hasFuckReset(false), saveTheOriginImage(
                     false) {
     }
-
-};
-
-//wangwang-3
-
-const int layerExpected = 8;
-
-class BriskScaleSpace {
-public:
-    int ptrcount;
-    cudaStream_t streamG;
-    // construct telling the octaves number:
-    BriskScaleSpace(cudaStream_t& stream1, int _octaves = 3);
-    ~BriskScaleSpace() {
-        if (ptrcount == 0) {
-            //cout << "got me in ~BriskLayerOne" << endl;
-            CUDA_CHECK_RETURN(cudaFree(scoreTemp));
-            for (int i = 0; i < layerExpected; i++) {
-
-                CUDA_CHECK_RETURN(cudaFree(kpsLoc[i]));
-            }
-        }
-    }
-
-    BriskScaleSpace(const BriskScaleSpace& c) {
-        *this = c;
-        ptrcount = c.ptrcount + 1;
-
-        for (int i = 0; i < layerExpected; i++) {
-            pyramid_[i].ptrcount++;
-        }
-    }
-    // construct the image pyramids
-    void
-    constructPyramid(PtrStepSzb& image, bool isFisrtTime);
-
-    // get Keypoints
-    int
-    getKeypoints(const int threshold_, float2* keypoints, float* kpSize,
-            float* kpScore);
-
-    // nonmax suppression:
-    __device__ inline bool
-    isMax2D(BriskLayerOne* layers, const int layer, const int x_layer,
-            const int y_layer);
-    // 1D (scale axis) refinement:
-    __device__ inline float
-    refine1D(const float s_05, const float s0, const float s05,
-            float& max) const; // around octave
-    __device__ inline float
-    refine1D_1(const float s_05, const float s0, const float s05,
-            float& max) const; // around intra
-    __device__ inline float
-    refine1D_2(const float s_05, const float s0, const float s05,
-            float& max) const; // around octave 0 only
-    // 2D maximum refinement:
-    __device__ inline float
-    subpixel2D(const int s_0_0, const int s_0_1, const int s_0_2,
-            const int s_1_0, const int s_1_1, const int s_1_2, const int s_2_0,
-            const int s_2_1, const int s_2_2, float& delta_x,
-            float& delta_y) const;
-
-    // 3D maximum refinement centered around (x_layer,y_layer)
-    __device__ inline float
-    refine3D(BriskLayerOne* layers, const int layer, const int x_layer,
-            const int y_layer, float& x, float& y, float& scale,
-            bool& ismax) const;
-
-    // interpolated score access with recalculation when needed:
-    __device__ inline int
-    getScoreAbove(BriskLayerOne* layers, const int layer, const int x_layer,
-            const int y_layer) const;__device__ inline int
-    getScoreBelow(BriskLayerOne* layers, const int layer, const int x_layer,
-            const int y_layer) const;
-
-    // return the maximum of score patches above or below
-    __device__ inline float
-    getScoreMaxAbove(BriskLayerOne* layers, const int layer, const int x_layer,
-            const int y_layer, const int threshold, bool& ismax, float& dx,
-            float& dy) const;__device__ inline float
-    getScoreMaxBelow(BriskLayerOne* layers, const int layer, const int x_layer,
-            const int y_layer, const int threshold, bool& ismax, float& dx,
-            float& dy) const;
-
-    // the image pyramids:
-    int layers_;
-    BriskLayerOne pyramid_[layerExpected];
-
-    //getkeypoint use
-    short2* kpsLoc[layerExpected];
-    int kpsCount[layerExpected];
-    int kpsCountAfter[layerExpected];
-    float* scoreTemp;
-    PtrStepSzb _integral;
-
-    // some constant parameters:
-    static const float safetyFactor_;
-    static const float basicSize_;
-};
-
-__global__ void refineKernel1(BriskScaleSpace space, float2* keypoints,
-        float* kpSize, float* kpScore, const int threshold_, int whichLayer);
-
-__global__ void refineKernel2(BriskScaleSpace space, float2* keypoints,
-        float* kpSize, float* kpScore, const int threshold_);
-
-//wangwang-2
-
-class BRISK_Impl {
-public:
-    int ptrcount;
-    int isFirstTime;
-    bool useSelfArray;
-
-    cudaStream_t streamG;
-
-    BriskScaleSpace briskScaleSpace;
-
-    explicit BRISK_Impl(cudaStream_t& stream_, bool useSelfArray, int rows, int cols, int thresh = 30, int octaves = 3,
-            float patternScale = 1.0f);
-
-    __host__ ~BRISK_Impl();
-
-    BRISK_Impl(const BRISK_Impl& c) :briskScaleSpace(c.briskScaleSpace) { //todo: check if right
-        *this = c;
-        ptrcount = c.ptrcount + 1;
-        briskScaleSpace.ptrcount = c.briskScaleSpace.ptrcount + 1;
-
-        for (int i = 0; i < layerExpected; i++) {
-            briskScaleSpace.pyramid_[i].ptrcount =
-                    c.briskScaleSpace.pyramid_[i].ptrcount + 1;
-        }
-    }
-
-    // call this to generate the kernel:
-    // circle of radius r (pixels), with n points;
-    // short pairings with dMax, long pairings with dMin
-    void generateKernel(const float* radiusList, const int* numberList,
-            const int ListSize, float dMax, float dMin);
-
-    int2 detectAndCompute(PtrStepSzb _image, float2* keypoints, float* kpSize,
-            float* kpScore,PtrStepSzb descriptors, bool useProvidedKeypoints);
-
-    int computeKeypointsNoOrientation(PtrStepSzb& _image, float2* keypoints,
-            float* kpSize, float* kpScore);
-    int2 computeDescriptorsAndOrOrientation(PtrStepSzb _image,
-            float2* keypoints, float* kpSize, float* kpScore, PtrStepSzb descriptors,
-            bool doDescriptors, bool doOrientation, bool useProvidedKeypoints);
-
-    // Feature parameters
-    int threshold;
-    int octaves;
-
-    // some helper structures for the Brisk pattern representation
-    struct BriskPatternPoint {
-        float x;         // x coordinate relative to center
-        float y;         // x coordinate relative to center
-        float sigma;     // Gaussian smoothing sigma
-    };
-    struct BriskShortPair {
-        unsigned int i;  // index of the first pattern point
-        unsigned int j;  // index of other pattern point
-    };
-    struct BriskLongPair {
-        unsigned int i;  // index of the first pattern point
-        unsigned int j;  // index of other pattern point
-        int weighted_dx; // 1024.0/dx
-        int weighted_dy; // 1024.0/dy
-    };
-
-    // pattern properties
-    BriskPatternPoint* patternPoints_;     //[i][rotation][scale]
-    unsigned int points_;                 // total number of collocation points
-    float* scaleList_;              // lists the scaling per scale index [scale]
-    unsigned int* sizeList_; // lists the total pattern size per scale index [scale]
-    static const unsigned int scales_;    // scales discretization
-    static const float scalerange_; // span of sizes 40->4 Octaves - else, this needs to be adjusted...
-    static const unsigned int n_rot_;  // discretization of the rotation look-up
-
-    // pairs
-    int strings_;         // number of unsigned chars the descriptor consists of
-    float dMax_;                         // short pair maximum distance
-    float dMin_;                         // long pair maximum distance
-    BriskShortPair* shortPairs_;         // d<_dMax
-    BriskLongPair* longPairs_;             // d>_dMin
-    unsigned int noShortPairs_;         // number of shortParis
-    unsigned int noLongPairs_;             // number of longParis
-
-    // general
-    static const float basicSize_;
-
-    //temp data for detect todo: init
-    float* kscalesG;
-    float2* keypointsG;
-    float* kpSizeG;
-    float* kpScoreG;
-    PtrStepSzi _integralG;
-    PtrStepSzb descriptorsG;
-
-    int* valuesInG;
-};
-
-const float BRISK_Impl::basicSize_ = 12.0f;
-const unsigned int BRISK_Impl::scales_ = 64;
-const float BRISK_Impl::scalerange_ = 30.f; // 40->4 Octaves - else, this needs to be adjusted...
-const unsigned int BRISK_Impl::n_rot_ = 1024; // discretization of the rotation look-up
-
-const float BriskScaleSpace::safetyFactor_ = 1.0f;
-const float BriskScaleSpace::basicSize_ = 12.0f;
-
 //wangwang-1
 
 /***
@@ -2663,5 +2462,3 @@ BRISK_Impl::BRISK_Impl(cudaStream_t& stream_,bool useSelfArray_, int rows, int c
 
     newArray( valuesInG, sizeof(int)*maxPointNow*points_,0,streamG );
 }
-
-#endif /* BRISKSCALESPACE_CUH_ */

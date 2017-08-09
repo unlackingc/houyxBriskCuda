@@ -5,7 +5,8 @@
  *      Author: houyx
  */
 
-#include "briskCode/BriskScaleSpace.cuh"
+//#include "briskCode/BriskScaleSpace.cuh"
+#include "Interface/BriskInterface.h"
 
 #include "opencv2/cudafeatures2d.hpp"
 #include <opencv2/features2d/features2d.hpp>
@@ -169,7 +170,7 @@ int main() {
 	BRISK_Impl a(stream1,true,dstImage.rows, dstImage.cols);
 
 
-	const int all = 20;
+	const int all = 10;
 	BRISK_Impl* aA[all];
 	cudaStream_t streamA[all];
 	//#pragma omp parallel for num_threads(10)
