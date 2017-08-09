@@ -6,7 +6,7 @@
  */
 
 //#include "briskCode/BriskScaleSpace.cuh"
-#include "Interface/BriskInterface.h"
+#include "briskCode/BriskScaleSpace.cuh"
 
 #include "opencv2/cudafeatures2d.hpp"
 #include <opencv2/features2d/features2d.hpp>

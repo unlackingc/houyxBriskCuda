@@ -173,8 +173,8 @@ public:
     PtrStepSzb _integral;
 
     // some constant parameters:
-    static const float safetyFactor_;
-    static const float basicSize_;
+    static const float safetyFactor_ = 1.0f;
+    static const float basicSize_ = 12.0f;
 };
 
 __global__ void refineKernel1(BriskScaleSpace space, float2* keypoints,
@@ -243,9 +243,11 @@ public:
     unsigned int points_;                 // total number of collocation points
     float* scaleList_;              // lists the scaling per scale index [scale]
     unsigned int* sizeList_; // lists the total pattern size per scale index [scale]
-    static const unsigned int scales_;    // scales discretization
-    static const float scalerange_; // span of sizes 40->4 Octaves - else, this needs to be adjusted...
-    static const unsigned int n_rot_;  // discretization of the rotation look-up
+
+    static const float basicSize_ = 12.0f;
+    static const unsigned int scales_ = 64;
+    static const float scalerange_ = 30.f; // 40->4 Octaves - else, this needs to be adjusted...
+    static const unsigned int n_rot_ = 1024; // discretization of the rotation look-up
 
     // pairs
     int strings_;         // number of unsigned chars the descriptor consists of
@@ -255,9 +257,6 @@ public:
     BriskLongPair* longPairs_;             // d>_dMin
     unsigned int noShortPairs_;         // number of shortParis
     unsigned int noLongPairs_;             // number of longParis
-
-    // general
-    static const float basicSize_;
 
     //temp data for detect todo: init
     float* kscalesG;
@@ -269,13 +268,5 @@ public:
 
     int* valuesInG;
 };
-
-const float BRISK_Impl::basicSize_ = 12.0f;
-const unsigned int BRISK_Impl::scales_ = 64;
-const float BRISK_Impl::scalerange_ = 30.f; // 40->4 Octaves - else, this needs to be adjusted...
-const unsigned int BRISK_Impl::n_rot_ = 1024; // discretization of the rotation look-up
-
-const float BriskScaleSpace::safetyFactor_ = 1.0f;
-const float BriskScaleSpace::basicSize_ = 12.0f;
 
 #endif /* BRISKSCALESPACE_CUH_ */

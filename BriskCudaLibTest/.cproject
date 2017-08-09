@@ -43,32 +43,32 @@
 								<option id="gnu.cpp.link.option.libs.1858838178" name="Libraries (-l)" superClass="gnu.cpp.link.option.libs" valueType="libs">
 									<listOptionValue builtIn="false" value="BriskCudaLibTwo"/>
 									<listOptionValue builtIn="false" value="cublas"/>
-									<listOptionValue builtIn="false" value="cudart"/>
-									<listOptionValue builtIn="false" value="cufft"/>
-									<listOptionValue builtIn="false" value="cufftw"/>
-									<listOptionValue builtIn="false" value="cuinj64"/>
-									<listOptionValue builtIn="false" value="curand"/>
 									<listOptionValue builtIn="false" value="cusparse"/>
-									<listOptionValue builtIn="false" value="nppial"/>
-									<listOptionValue builtIn="false" value="nppicc"/>
-									<listOptionValue builtIn="false" value="nppicom"/>
-									<listOptionValue builtIn="false" value="nppidei"/>
-									<listOptionValue builtIn="false" value="nppif"/>
 									<listOptionValue builtIn="false" value="nppig"/>
-									<listOptionValue builtIn="false" value="nppim"/>
-									<listOptionValue builtIn="false" value="nppist"/>
-									<listOptionValue builtIn="false" value="nppisu"/>
-									<listOptionValue builtIn="false" value="nppitc"/>
-									<listOptionValue builtIn="false" value="npps"/>
 									<listOptionValue builtIn="false" value="nvblas"/>
-									<listOptionValue builtIn="false" value="nvgraph"/>
-									<listOptionValue builtIn="false" value="nvrtc-builtins"/>
-									<listOptionValue builtIn="false" value="nvrtc"/>
-									<listOptionValue builtIn="false" value="nvToolsExt"/>
-									<listOptionValue builtIn="false" value="OpenCL"/>
 									<listOptionValue builtIn="false" value="cudart"/>
-									<listOptionValue builtIn="false" value="nppi"/>
 									<listOptionValue builtIn="false" value="nppc"/>
+									<listOptionValue builtIn="false" value="nppim"/>
+									<listOptionValue builtIn="false" value="nvgraph"/>
+									<listOptionValue builtIn="false" value="cufft"/>
+									<listOptionValue builtIn="false" value="nppial"/>
+									<listOptionValue builtIn="false" value="nppi"/>
+									<listOptionValue builtIn="false" value="nvrtc-builtins"/>
+									<listOptionValue builtIn="false" value="cufftw"/>
+									<listOptionValue builtIn="false" value="nppicc"/>
+									<listOptionValue builtIn="false" value="nppist"/>
+									<listOptionValue builtIn="false" value="nvrtc"/>
+									<listOptionValue builtIn="false" value="cuinj64"/>
+									<listOptionValue builtIn="false" value="nppicom"/>
+									<listOptionValue builtIn="false" value="nppisu"/>
+									<listOptionValue builtIn="false" value="nvToolsExt"/>
+									<listOptionValue builtIn="false" value="curand"/>
+									<listOptionValue builtIn="false" value="nppidei"/>
+									<listOptionValue builtIn="false" value="nppitc"/>
+									<listOptionValue builtIn="false" value="OpenCL"/>
+									<listOptionValue builtIn="false" value="cusolver"/>
+									<listOptionValue builtIn="false" value="nppif"/>
+									<listOptionValue builtIn="false" value="npps"/>
 									<listOptionValue builtIn="false" value="opencv_cudabgsegm "/>
 									<listOptionValue builtIn="false" value="opencv_cudaobjdetect "/>
 									<listOptionValue builtIn="false" value="opencv_cudastereo "/>
