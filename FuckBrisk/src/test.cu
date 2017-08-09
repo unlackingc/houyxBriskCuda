@@ -178,7 +178,7 @@ int main() {
 	{
 		cudaStreamCreateWithFlags( &streamA[i], cudaStreamNonBlocking );
 		aA[i] = new BRISK_Impl(streamA[i],true,dstImage.rows, dstImage.cols);
-		aA[i]->detectAndCompute(imageIn, a.keypointsG, a.kpSizeG, a.kpScoreG,a.descriptorsG,false);
+		aA[i]->detectAndCompute(imageIn, aA[i]->keypointsG, aA[i]->kpSizeG, aA[i]->kpScoreG,aA[i]->descriptorsG,false);
 		//printf( "%d----%d\n", omp_get_thread_num(),i);
 		//cout << omp_get_thread_num() << "-- " <<  << endl;
 	}
@@ -201,7 +201,7 @@ int main() {
 		//#pragma omp parallel for num_threads(10)
 		for( int i = 0; i < all; i++ )
 		{
-			aA[i]->detectAndCompute(imageIn, a.keypointsG, a.kpSizeG, a.kpScoreG,a.descriptorsG,false);
+			aA[i]->detectAndCompute(imageIn, aA[i]->keypointsG, aA[i]->kpSizeG, aA[i]->kpScoreG,aA[i]->descriptorsG,false);
 			//printf( "%d----%d\n", omp_get_thread_num(),i);
 			//cout << omp_get_thread_num() << "-- " <<  << endl;
 		}

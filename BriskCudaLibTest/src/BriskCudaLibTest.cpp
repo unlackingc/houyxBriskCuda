@@ -173,7 +173,7 @@ int main() {
 	BRISK_Impl a(stream1,true,dstImage.rows, dstImage.cols);
 
 
-	const int all = 10;
+/*	const int all = 10;
 	BRISK_Impl* aA[all];
 	cudaStream_t streamA[all];
 	//#pragma omp parallel for num_threads(10)
@@ -184,7 +184,7 @@ int main() {
 		aA[i]->detectAndCompute(imageIn, a.keypointsG, a.kpSizeG, a.kpScoreG,a.descriptorsG,false);
 		//printf( "%d----%d\n", omp_get_thread_num(),i);
 		//cout << omp_get_thread_num() << "-- " <<  << endl;
-	}
+	}*/
 
 
 
@@ -210,12 +210,12 @@ int main() {
 		}
 	}*/
 
-/*	for( int i = 0; i < 1000; i ++ )
+	for( int i = 0; i < 1000; i ++ )
 	{
 		size = a.detectAndCompute(imageIn, a.keypointsG, a.kpSizeG, a.kpScoreG,a.descriptorsG,false);
 		if( i < 10 || (i>=10 && i%50==0))
 		cout << "caled: " << i << endl;
-	}*/
+	}
 	size = a.detectAndCompute(imageIn, a.keypointsG, a.kpSizeG, a.kpScoreG,a.descriptorsG,false);
 	cudaEventRecord(stop, 0);
 	cudaEventSynchronize(stop);
