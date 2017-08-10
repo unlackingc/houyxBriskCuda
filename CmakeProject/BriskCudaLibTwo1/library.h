@@ -1,0 +1,6 @@
+#ifndef BRISKCUDALIBTWO1_LIBRARY_H
+#define BRISKCUDALIBTWO1_LIBRARY_H
+
+void hello();
+
+#endif

@@ -184,7 +184,9 @@ public:
     // interpolated score access with recalculation when needed:
     __device__ inline int
     getScoreAbove(BriskLayerOne* layers, const int layer, const int x_layer,
-            const int y_layer) const;__device__ inline int
+            const int y_layer) const;
+
+    __device__ inline int
     getScoreBelow(BriskLayerOne* layers, const int layer, const int x_layer,
             const int y_layer) const;
 
@@ -192,7 +194,9 @@ public:
     __device__ inline float
     getScoreMaxAbove(BriskLayerOne* layers, const int layer, const int x_layer,
             const int y_layer, const int threshold, bool& ismax, float& dx,
-            float& dy) const;__device__ inline float
+            float& dy) const;
+
+    __device__ inline float
     getScoreMaxBelow(BriskLayerOne* layers, const int layer, const int x_layer,
             const int y_layer, const int threshold, bool& ismax, float& dx,
             float& dy) const;

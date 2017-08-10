@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6"/>
+	<Project>
+		<Option title="BriskCudaLibTwo1"/>
+		<Option makefile_is_custom="1"/>
+		<Option compiler="gcc"/>
+		<Option virtualFolders="CMake Files\;"/>
+		<Build>
+			<Target title="all">
+				<Option working_dir="/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug/Makefile&quot;  VERBOSE=1 all"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="rebuild_cache">
+				<Option working_dir="/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug/Makefile&quot;  VERBOSE=1 rebuild_cache"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="edit_cache">
+				<Option working_dir="/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug"/>
+				<Option type="4"/>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug/Makefile&quot;  VERBOSE=1 edit_cache"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="BriskCudaLibTwo1">
+				<Option output="/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug/libBriskCudaLibTwo1.so" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug"/>
+				<Option object_output="./"/>
+				<Option type="3"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/usr/local/cuda/include"/>
+					<Add directory="/home/houyx/CLionProjects/BriskCudaLibTwo1/src/includes"/>
+					<Add directory="/usr/include/c++/5"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/5"/>
+					<Add directory="/usr/include/c++/5/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/5/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/5/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug/Makefile&quot;  VERBOSE=1 BriskCudaLibTwo1"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+			<Target title="BriskCudaLibTwo1/fast">
+				<Option output="/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug/libBriskCudaLibTwo1.so" prefix_auto="0" extension_auto="0"/>
+				<Option working_dir="/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug"/>
+				<Option object_output="./"/>
+				<Option type="3"/>
+				<Option compiler="gcc"/>
+				<Compiler>
+					<Add directory="/usr/local/cuda/include"/>
+					<Add directory="/home/houyx/CLionProjects/BriskCudaLibTwo1/src/includes"/>
+					<Add directory="/usr/include/c++/5"/>
+					<Add directory="/usr/include/x86_64-linux-gnu/c++/5"/>
+					<Add directory="/usr/include/c++/5/backward"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/5/include"/>
+					<Add directory="/usr/local/include"/>
+					<Add directory="/usr/lib/gcc/x86_64-linux-gnu/5/include-fixed"/>
+					<Add directory="/usr/include/x86_64-linux-gnu"/>
+					<Add directory="/usr/include"/>
+				</Compiler>
+				<MakeCommands>
+					<Build command="/usr/bin/make -j8 -f &quot;/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug/Makefile&quot;  VERBOSE=1 BriskCudaLibTwo1/fast"/>
+					<CompileFile command="/usr/bin/make -j8 -f &quot;/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug/Makefile&quot;  VERBOSE=1 &quot;$file&quot;"/>
+					<Clean command="/usr/bin/make -j8 -f &quot;/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+					<DistClean command="/usr/bin/make -j8 -f &quot;/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug/Makefile&quot;  VERBOSE=1 clean"/>
+				</MakeCommands>
+			</Target>
+		</Build>
+		<Unit filename="/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug/CMakeFiles/BriskCudaLibTwo1.dir/BriskCudaLibTwo1_intermediate_link.o">
+			<Option target="BriskCudaLibTwo1"/>
+		</Unit>
+		<Unit filename="/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug/CMakeFiles/BriskCudaLibTwo1.dir/BriskCudaLibTwo1_intermediate_link.o.rule">
+			<Option target="BriskCudaLibTwo1"/>
+		</Unit>
+		<Unit filename="/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug/CMakeFiles/BriskCudaLibTwo1.dir/src/briskCode/BriskCudaLibTwo1_generated_BriskScaleSpace.cu.o">
+			<Option target="BriskCudaLibTwo1"/>
+		</Unit>
+		<Unit filename="/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug/CMakeFiles/BriskCudaLibTwo1.dir/src/libsrc/AgastCuda/BriskCudaLibTwo1_generated_AgastCuda.cu.o">
+			<Option target="BriskCudaLibTwo1"/>
+		</Unit>
+		<Unit filename="/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug/CMakeFiles/BriskCudaLibTwo1.dir/src/libsrc/BriskCudaLibTwo1_generated_cuda_types.cu.o">
+			<Option target="BriskCudaLibTwo1"/>
+		</Unit>
+		<Unit filename="/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug/CMakeFiles/BriskCudaLibTwo1.dir/src/libsrc/FastCuda/BriskCudaLibTwo1_generated_FastCuda.cu.o">
+			<Option target="BriskCudaLibTwo1"/>
+		</Unit>
+		<Unit filename="/home/houyx/CLionProjects/BriskCudaLibTwo1/src/briskCode/BriskScaleSpace.cu">
+			<Option target="BriskCudaLibTwo1"/>
+		</Unit>
+		<Unit filename="/home/houyx/CLionProjects/BriskCudaLibTwo1/src/includes/AgastCuda.h">
+			<Option target="BriskCudaLibTwo1"/>
+		</Unit>
+		<Unit filename="/home/houyx/CLionProjects/BriskCudaLibTwo1/src/includes/BaseIncludes.h">
+			<Option target="BriskCudaLibTwo1"/>
+		</Unit>
+		<Unit filename="/home/houyx/CLionProjects/BriskCudaLibTwo1/src/includes/BriskScaleSpace.h">
+			<Option target="BriskCudaLibTwo1"/>
+		</Unit>
+		<Unit filename="/home/houyx/CLionProjects/BriskCudaLibTwo1/src/includes/FastCuda.h">
+			<Option target="BriskCudaLibTwo1"/>
+		</Unit>
+		<Unit filename="/home/houyx/CLionProjects/BriskCudaLibTwo1/src/includes/cuda_types.h">
+			<Option target="BriskCudaLibTwo1"/>
+		</Unit>
+		<Unit filename="/home/houyx/CLionProjects/BriskCudaLibTwo1/src/includes/globalValues.h">
+			<Option target="BriskCudaLibTwo1"/>
+		</Unit>
+		<Unit filename="/home/houyx/CLionProjects/BriskCudaLibTwo1/src/includes/mask.hpp">
+			<Option target="BriskCudaLibTwo1"/>
+		</Unit>
+		<Unit filename="/home/houyx/CLionProjects/BriskCudaLibTwo1/src/includes/table.h">
+			<Option target="BriskCudaLibTwo1"/>
+		</Unit>
+		<Unit filename="/home/houyx/CLionProjects/BriskCudaLibTwo1/src/libsrc/AgastCuda/AgastCuda.cu">
+			<Option target="BriskCudaLibTwo1"/>
+		</Unit>
+		<Unit filename="/home/houyx/CLionProjects/BriskCudaLibTwo1/src/libsrc/FastCuda/FastCuda.cu">
+			<Option target="BriskCudaLibTwo1"/>
+		</Unit>
+		<Unit filename="/home/houyx/CLionProjects/BriskCudaLibTwo1/src/libsrc/cuda_types.cu">
+			<Option target="BriskCudaLibTwo1"/>
+		</Unit>
+		<Unit filename="/home/houyx/CLionProjects/BriskCudaLibTwo1/CMakeLists.txt">
+			<Option virtualFolder="CMake Files\"/>
+		</Unit>
+	</Project>
+</CodeBlocks_project_file>

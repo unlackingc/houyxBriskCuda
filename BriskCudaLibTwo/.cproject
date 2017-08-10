@@ -57,6 +57,7 @@
 					<sass major="5" minor="0"/>
 					<ptx major="5" minor="0"/>
 				</executable>
+				<editor-arch major="5" minor="0"/>
 			</storageModule>
 			<storageModule moduleId="org.eclipse.cdt.core.externalSettings"/>
 		</cconfiguration>
@@ -98,6 +99,14 @@
 							</tool>
 							<tool id="nvcc.linker.base.1149601071" name="NVCC Linker" superClass="nvcc.linker.base">
 								<option defaultValue="true" id="nvcc.linker.option.shared.78363166" name="Shared (-shared)" superClass="nvcc.linker.option.shared" valueType="boolean"/>
+								<option id="nvcc.linker.option.libs.1660679674" name="Libraries (-l)" superClass="nvcc.linker.option.libs" valueType="libs">
+									<listOptionValue builtIn="false" value="nppc"/>
+									<listOptionValue builtIn="false" value="nppi"/>
+									<listOptionValue builtIn="false" value="npps"/>
+								</option>
+								<option id="nvcc.linker.option.paths.1513508559" name="Library search path (-L)" superClass="nvcc.linker.option.paths" valueType="libPaths">
+									<listOptionValue builtIn="false" value="/usr/local/cuda-8.0/lib64"/>
+								</option>
 								<inputType id="nvcc.linker.input.1358679422" superClass="nvcc.linker.input">
 									<additionalInput kind="additionalinputdependency" paths="$(USER_OBJS)"/>
 									<additionalInput kind="additionalinput" paths="$(LIBS)"/>
@@ -145,4 +154,13 @@
 		</scannerConfigBuildInfo>
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
+	<storageModule moduleId="refreshScope" versionNumber="2">
+		<configuration configurationName="Release">
+			<resource resourceType="PROJECT" workspacePath="/BriskCudaLibTwo"/>
+		</configuration>
+		<configuration configurationName="Debug">
+			<resource resourceType="PROJECT" workspacePath="/BriskCudaLibTwo"/>
+		</configuration>
+	</storageModule>
+	<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>
 </cproject>

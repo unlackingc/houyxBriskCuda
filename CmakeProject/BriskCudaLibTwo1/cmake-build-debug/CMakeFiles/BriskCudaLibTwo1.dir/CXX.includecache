@@ -1,0 +1,16 @@
+#IncludeRegexLine: ^[ 	]*#[ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/houyx/CLionProjects/BriskCudaLibTwo1/library.cpp
+library.h
+/home/houyx/CLionProjects/BriskCudaLibTwo1/library.h
+iostream
+-
+
+/home/houyx/CLionProjects/BriskCudaLibTwo1/library.h
+

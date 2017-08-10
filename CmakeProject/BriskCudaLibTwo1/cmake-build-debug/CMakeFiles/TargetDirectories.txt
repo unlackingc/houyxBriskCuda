@@ -1,0 +1,3 @@
+/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug/CMakeFiles/rebuild_cache.dir
+/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug/CMakeFiles/edit_cache.dir
+/home/houyx/CLionProjects/BriskCudaLibTwo1/cmake-build-debug/CMakeFiles/BriskCudaLibTwo1.dir
